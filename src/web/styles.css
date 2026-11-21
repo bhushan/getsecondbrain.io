@@ -158,6 +158,7 @@ button.icon { border: 0; background: none; font-size: 1.5rem; line-height: 1; pa
 .snippet-block { margin-top: 8px; display: grid; gap: 4px; }
 .snippet-label { font-size: 0.8rem; color: var(--muted); }
 .guide .snippet { background: var(--paper); }
+.guide h3 { margin: 22px 0 6px; font-size: 1rem; }
 .explain { margin: 0; display: grid; gap: 4px; }
 .explain dt { font-weight: 600; margin-top: 10px; }
 .explain dd { margin: 0; color: var(--muted); max-width: 66ch; }

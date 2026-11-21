@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { scanMarkdown } from "../worker/lib/markdown";
-import { connectGuides, TRY_PROMPTS } from "./connectGuides";
+import { connectGuides, TRY_PROMPTS, type GuideStep } from "./connectGuides";
 import { notePathFor } from "./importPaths";
 import { api, type AuditEntry, type Connection, type Me, type NoteMeta } from "./api";
 
@@ -46,6 +46,27 @@ function readGuide(): string {
   } catch {
     return "claude";
   }
+}
+
+function GuideSteps({ steps }: { steps: GuideStep[] }) {
+  return (
+    <ol className="guide-steps">
+      {steps.map((step, index) => (
+        <li key={index}>
+          <p>{step.text}</p>
+          {step.code && (
+            <div className="snippet-block">
+              {step.codeLabel && <span className="snippet-label">{step.codeLabel}</span>}
+              <div className="snippet">
+                {step.code.includes("\n") ? <pre>{step.code}</pre> : <code>{step.code}</code>}
+                <Copy text={step.code} label="Copy" />
+              </div>
+            </div>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 export function ConnectPage({ me }: { me: Me }) {
@@ -108,22 +129,13 @@ export function ConnectPage({ me }: { me: Me }) {
           <strong>{guide.name}</strong> <span className="muted">{guide.where}</span>
         </p>
         {guide.note && <p className="guide-note">{guide.note}</p>}
-        <ol className="guide-steps">
-          {guide.steps.map((step, index) => (
-            <li key={index}>
-              <p>{step.text}</p>
-              {step.code && (
-                <div className="snippet-block">
-                  {step.codeLabel && <span className="snippet-label">{step.codeLabel}</span>}
-                  <div className="snippet">
-                    {step.code.includes("\n") ? <pre>{step.code}</pre> : <code>{step.code}</code>}
-                    <Copy text={step.code} label="Copy" />
-                  </div>
-                </div>
-              )}
-            </li>
-          ))}
-        </ol>
+        <GuideSteps steps={guide.steps} />
+        <h3>Make Second Brain its only memory</h3>
+        <p className="muted">
+          Connecting gives {guide.name} the tools; this rule tells it to use them every time. It searches Second Brain before answering
+          anything about you, saves what you tell it there, and stops keeping a separate memory of its own.
+        </p>
+        <GuideSteps steps={guide.memory} />
       </section>
 
       <h2>On the Second Brain page</h2>
@@ -163,7 +175,7 @@ export function ConnectPage({ me }: { me: Me }) {
         <dt>The sign-in window closed or showed "This sign-in link expired"</dt>
         <dd>Start the connection again from the app. Allow pop-ups for the app if your browser blocked the window.</dd>
         <dt>Connected, but the app never uses Second Brain</dt>
-        <dd>Switch the connector or its tools on for the chat, then name Second Brain in your request.</dd>
+        <dd>Switch the connector or its tools on for the chat, and add the only-memory rule from your app's steps above. Until then, name Second Brain in your request.</dd>
         <dt>The app can read but not save</dt>
         <dd>It was connected read only. Disconnect it below, connect again, and keep "Create and edit notes" ticked. Some ChatGPT plans only allow reading.</dd>
         <dt>It worked, then asks to sign in again</dt>

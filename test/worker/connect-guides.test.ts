@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { connectGuides } from "../../src/web/connectGuides";
+import { connectGuides, MEMORY_RULE } from "../../src/web/connectGuides";
 
 const URL = "https://mcp.example.test";
 const guides = connectGuides(URL);
@@ -43,5 +43,36 @@ describe("connect guides", () => {
   it("gives Cursor and VS Code valid JSON with the address", () => {
     expect(JSON.parse(snippets("cursor")[0]!)).toEqual({ mcpServers: { "second-brain": { url: URL } } });
     expect(JSON.parse(snippets("vscode")[0]!)).toEqual({ servers: { "second-brain": { type: "http", url: URL } } });
+  });
+});
+
+describe("only-memory setup", () => {
+  const memorySnippets = (id: string) => byId(id).memory.flatMap((step) => (step.code ? [step.code] : []));
+
+  it("makes Second Brain the only memory and source of truth, with a fallback when it is down", () => {
+    expect(MEMORY_RULE).toMatch(/only memory/i);
+    expect(MEMORY_RULE).toMatch(/source of truth/i);
+    expect(MEMORY_RULE).toMatch(/search Second Brain/i);
+    expect(MEMORY_RULE).toMatch(/do not use your built-in memory/i);
+    expect(MEMORY_RULE).toMatch(/not connected/i);
+  });
+
+  it("gives every app a step that carries the rule", () => {
+    for (const guide of guides) {
+      expect(guide.memory.length).toBeGreaterThanOrEqual(1);
+      expect(guide.memory.some((step) => step.code?.includes(MEMORY_RULE))).toBe(true);
+    }
+  });
+
+  it("tells every app except the generic one how to switch off its own memory", () => {
+    for (const guide of guides.filter((item) => item.id !== "other")) {
+      expect(guide.memory.some((step) => /memor/i.test(step.text) && /off|disable/i.test(step.text))).toBe(true);
+    }
+  });
+
+  it("appends the rule to each CLI's global instructions file", () => {
+    expect(memorySnippets("claude-code")[0]).toContain(">> ~/.claude/CLAUDE.md");
+    expect(memorySnippets("codex")[0]).toContain(">> ~/.codex/AGENTS.md");
+    expect(memorySnippets("gemini")[0]).toContain(">> ~/.gemini/GEMINI.md");
   });
 });
