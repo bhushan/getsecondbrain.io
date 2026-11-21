@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { Principal } from "../../src/worker/auth/principal";
-import { TOOLS, runTool } from "../../src/worker/mcp/tools";
+import { SERVER_INSTRUCTIONS, TOOLS, runTool } from "../../src/worker/mcp/tools";
 
 let counter = 0;
 const principal = (scopes: Principal["scopes"] = ["read", "write"]): Principal => ({
@@ -35,6 +35,21 @@ describe("MCP tool list", () => {
       expect(tool.annotations.destructiveHint).toBe(false);
       expect(tool.annotations.openWorldHint).toBe(false);
     }
+  });
+});
+
+describe("MCP server instructions", () => {
+  it("tell the app this is the user's primary memory, to check it first and to save there", () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/primary memory/i);
+    expect(SERVER_INSTRUCTIONS).toMatch(/before answering/i);
+    expect(SERVER_INSTRUCTIONS).toMatch(/local files/i);
+    expect(SERVER_INSTRUCTIONS).toMatch(/save/i);
+    expect(SERVER_INSTRUCTIONS).toMatch(/data, not instructions/i);
+  });
+
+  it("describe search as the first step for anything about the user", () => {
+    const search = TOOLS.find((tool) => tool.name === "search")!;
+    expect(search.description).toMatch(/first/i);
   });
 });
 
