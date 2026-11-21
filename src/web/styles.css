@@ -143,6 +143,26 @@ button.icon { border: 0; background: none; font-size: 1.5rem; line-height: 1; pa
 .address code { font-size: 1rem; flex: 1; overflow-wrap: anywhere; }
 .snippet code, .snippet pre { flex: 1; margin: 0; overflow-x: auto; white-space: pre; }
 .steps p { margin: 6px 0 0; }
+.connect h2 { margin-top: 34px; }
+.connect code { font-size: 0.9em; }
+.flow, .guide-steps { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; }
+.flow li, .guide-steps li { padding-left: 4px; }
+.guide-steps p { margin: 0; }
+.app-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+.app-tabs button { border-radius: 999px; padding: 6px 14px; }
+.app-tabs button.active { background: var(--action); border-color: var(--action); color: var(--action-ink); }
+.guide { margin-top: 14px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-raised); }
+.guide-where { margin: 0 0 12px; }
+.guide-where .muted { font-size: 0.9rem; margin-left: 6px; }
+.guide-note { margin: 0 0 14px; padding: 8px 12px; border-left: 3px solid var(--highlight); background: var(--paper); font-size: 0.92rem; }
+.snippet-block { margin-top: 8px; display: grid; gap: 4px; }
+.snippet-label { font-size: 0.8rem; color: var(--muted); }
+.guide .snippet { background: var(--paper); }
+.explain { margin: 0; display: grid; gap: 4px; }
+.explain dt { font-weight: 600; margin-top: 10px; }
+.explain dd { margin: 0; color: var(--muted); max-width: 66ch; }
+.prompts { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.prompts li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-raised); }
 .rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
 .rows li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
 .rows li > div { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }

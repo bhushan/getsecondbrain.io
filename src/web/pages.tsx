@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { scanMarkdown } from "../worker/lib/markdown";
+import { connectGuides, TRY_PROMPTS } from "./connectGuides";
 import { notePathFor } from "./importPaths";
 import { api, type AuditEntry, type Connection, type Me, type NoteMeta } from "./api";
 
@@ -37,46 +38,142 @@ function Copy({ text, label }: { text: string; label: string }) {
   );
 }
 
+const GUIDE_KEY = "sb.connect-app";
+
+function readGuide(): string {
+  try {
+    return localStorage.getItem(GUIDE_KEY) ?? "claude";
+  } catch {
+    return "claude";
+  }
+}
+
 export function ConnectPage({ me }: { me: Me }) {
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const load = () => api.connections().then(({ connections }) => setConnections(connections));
   useEffect(() => void load(), []);
   const url = me.mcpUrl;
-  const claudeCode = `claude mcp add --transport http second-brain ${url}`;
-  const cursor = JSON.stringify({ mcpServers: { "second-brain": { url } } }, null, 2);
+  const guides = connectGuides(url);
+  const [active, setActive] = useState(readGuide);
+  const guide = guides.find((item) => item.id === active) ?? guides[0]!;
+  const choose = (id: string) => {
+    setActive(id);
+    try {
+      localStorage.setItem(GUIDE_KEY, id);
+    } catch {
+      /* the choice just is not remembered */
+    }
+  };
 
   return (
-    <main className="page">
+    <main className="page connect">
       <h1>Connect your AI apps</h1>
-      <p className="lede">Add this address to an app once. It asks you to sign in here and choose which workspace it can use.</p>
+      <p className="lede">
+        Connect Claude, ChatGPT, Cursor or any other app that supports MCP. It can then search your notes, read them and save new ones, but
+        only in the workspace you choose, and it can never delete anything.
+      </p>
+
+      <h2>Your connection address</h2>
+      <p className="muted">The same address works for every app. You only need to sign in to Second Brain when the app asks.</p>
       <div className="address">
         <code>{url}</code>
         <Copy text={url} label="Copy address" />
       </div>
 
-      <section className="steps">
-        <h2>Claude</h2>
-        <p>Settings, Connectors, Add custom connector. Paste the address, then Connect.</p>
-        <h2>Claude Code</h2>
-        <div className="snippet">
-          <code>{claudeCode}</code>
-          <Copy text={claudeCode} label="Copy" />
-        </div>
-        <p>Then run <code>/mcp</code> inside Claude Code and choose Authenticate.</p>
-        <h2>ChatGPT</h2>
-        <p>Settings, Apps and connectors, Advanced, turn on Developer mode. Then Create, paste the address, and choose OAuth.</p>
-        <h2>Cursor</h2>
-        <div className="snippet">
-          <pre>{cursor}</pre>
-          <Copy text={cursor} label="Copy" />
-        </div>
-        <p>Add this to <code>~/.cursor/mcp.json</code>, then choose Connect in Cursor's MCP settings.</p>
+      <h2>How connecting works</h2>
+      <ol className="flow">
+        <li>Add the address above to your app, using the steps for that app below.</li>
+        <li>The app opens a Second Brain page. Sign in with Google, choose a workspace, and choose whether the app may create and edit notes.</li>
+        <li>Choose Connect. The app now has Second Brain tools, and it shows up under Connected apps at the bottom of this page.</li>
+      </ol>
+
+      <h2 id="apps-heading">Steps for your app</h2>
+      <div className="app-tabs" role="tablist" aria-labelledby="apps-heading">
+        {guides.map((item) => (
+          <button
+            key={item.id}
+            role="tab"
+            id={`tab-${item.id}`}
+            aria-selected={item.id === guide.id}
+            aria-controls="guide-panel"
+            className={item.id === guide.id ? "active" : undefined}
+            onClick={() => choose(item.id)}
+          >
+            {item.name}
+          </button>
+        ))}
+      </div>
+      <section className="guide" role="tabpanel" id="guide-panel" aria-labelledby={`tab-${guide.id}`}>
+        <p className="guide-where">
+          <strong>{guide.name}</strong> <span className="muted">{guide.where}</span>
+        </p>
+        {guide.note && <p className="guide-note">{guide.note}</p>}
+        <ol className="guide-steps">
+          {guide.steps.map((step, index) => (
+            <li key={index}>
+              <p>{step.text}</p>
+              {step.code && (
+                <div className="snippet-block">
+                  {step.codeLabel && <span className="snippet-label">{step.codeLabel}</span>}
+                  <div className="snippet">
+                    {step.code.includes("\n") ? <pre>{step.code}</pre> : <code>{step.code}</code>}
+                    <Copy text={step.code} label="Copy" />
+                  </div>
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
       </section>
+
+      <h2>On the Second Brain page</h2>
+      <dl className="explain">
+        <dt>Workspace it can use</dt>
+        <dd>The app sees only this workspace. To give an app a different workspace, disconnect it and connect again.</dd>
+        <dt>Search and read notes</dt>
+        <dd>Always on. The app can search, open notes, follow links and list tags.</dd>
+        <dt>Create and edit notes</dt>
+        <dd>
+          Untick it for read only. When ticked, the app can save new notes, add to notes and link them. Every change keeps the earlier
+          version, and apps can never delete or trash a note.
+        </dd>
+      </dl>
+
+      <h2>Try it</h2>
+      <p className="muted">Ask your app something like this. Naming Second Brain helps the app pick the right tool.</p>
+      <ul className="prompts">
+        {TRY_PROMPTS.map((prompt) => (
+          <li key={prompt}>
+            <span>{prompt}</span>
+            <Copy text={prompt} label="Copy" />
+          </li>
+        ))}
+      </ul>
+      <p className="muted">Notes an app saves appear on the map straight away, and every action is listed under Activity.</p>
+
+      <h2>If something goes wrong</h2>
+      <dl className="explain">
+        <dt>The app says it cannot connect or finds no server</dt>
+        <dd>
+          Check the address is exactly <code>{url}</code>, with https and nothing after it. Choose the HTTP or Streamable HTTP type if the app
+          asks, not SSE.
+        </dd>
+        <dt>"This account is not on the list yet"</dt>
+        <dd>Second Brain is in private beta. Sign in with the Google account that has access, or ask for an invitation at hello@getsecondbrain.io.</dd>
+        <dt>The sign-in window closed or showed "This sign-in link expired"</dt>
+        <dd>Start the connection again from the app. Allow pop-ups for the app if your browser blocked the window.</dd>
+        <dt>Connected, but the app never uses Second Brain</dt>
+        <dd>Switch the connector or its tools on for the chat, then name Second Brain in your request.</dd>
+        <dt>The app can read but not save</dt>
+        <dd>It was connected read only. Disconnect it below, connect again, and keep "Create and edit notes" ticked. Some ChatGPT plans only allow reading.</dd>
+        <dt>It worked, then asks to sign in again</dt>
+        <dd>The app was disconnected here or its sign-in expired. Choose Connect (or Authenticate) in the app again.</dd>
+      </dl>
 
       <section>
         <h2>Connected apps</h2>
         {connections === null && <p className="muted">Loading…</p>}
-        {connections?.length === 0 && <p className="muted">Nothing connected yet.</p>}
+        {connections?.length === 0 && <p className="muted">Nothing connected yet. Follow the steps above, then come back here.</p>}
         <ul className="rows">
           {connections?.map((connection) => (
             <li key={connection.id}>
@@ -91,6 +188,13 @@ export function ConnectPage({ me }: { me: Me }) {
             </li>
           ))}
         </ul>
+        {connections !== null && (
+          <p>
+            <button className="link" onClick={() => void load()}>
+              Refresh the list
+            </button>
+          </p>
+        )}
       </section>
     </main>
   );
