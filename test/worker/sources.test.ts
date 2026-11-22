@@ -226,6 +226,29 @@ describe("syncing Granola notes", () => {
     expect((await note(who, "Meetings/2026-11-20 Roadmap (2)"))!.body).toContain('granola_id: "m-1"');
   });
 
+  it("asks again, one by one, for meetings missing from a batch", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    fake.add(meeting("m-1", "Roadmap"));
+    fake.add(meeting("m-2", "Pricing"));
+    fake.dropFromBatch.add("m-2");
+    await connect(who);
+    expect(await sync(who)).toMatchObject({ status: "ok", created: 2 });
+  });
+
+  it("does not move past a meeting Granola would not return, so the next sync tries again", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    fake.add(meeting("m-1", "Roadmap"));
+    fake.add(meeting("m-2", "Pricing"));
+    fake.neverReturn.add("m-2");
+    await connect(who);
+    expect(await sync(who)).toMatchObject({ status: "error" });
+    fake.neverReturn.clear();
+    expect(await sync(who)).toMatchObject({ status: "ok", created: 1 });
+    expect(await note(who, "Meetings/2026-11-20 Pricing")).not.toBeNull();
+  });
+
   it("keeps meeting notes after Granola stops sharing them", async () => {
     const fake = fakeGranola();
     const who = await signIn();

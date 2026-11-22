@@ -28,6 +28,10 @@ export function fakeGranola() {
     expiresIn: 3600,
     /** When set, the token endpoint answers a refresh with this. */
     tokenFailure: null as null | { status: number; body: unknown },
+    /** Ids left out of a batched get_meetings answer (still returned when asked for alone). */
+    dropFromBatch: new Set<string>(),
+    /** Ids get_meetings never returns. */
+    neverReturn: new Set<string>(),
     /** When set, the MCP endpoint answers with this status. */
     mcpStatus: null as null | number,
     add(meeting: FakeMeeting) {
@@ -63,8 +67,9 @@ export function fakeGranola() {
       return { text: `${pagination}\n\n<meetings_data count="${page.length}">\n${rows.join("\n\n")}\n</meetings_data>` };
     }
     if (name === "get_meetings") {
-      const ids = (args.meeting_ids as string[]) ?? [];
-      return { text: getMeetingsXml(ids.flatMap((id) => (meetings.has(id) ? [meetings.get(id)!] : []))) };
+      const asked = (args.meeting_ids as string[]) ?? [];
+      const kept = asked.filter((id) => !fake.neverReturn.has(id) && !(asked.length > 1 && fake.dropFromBatch.has(id)));
+      return { text: getMeetingsXml(kept.flatMap((id) => (meetings.has(id) ? [meetings.get(id)!] : []))) };
     }
     return { text: `Unknown tool ${name}`, isError: true };
   };

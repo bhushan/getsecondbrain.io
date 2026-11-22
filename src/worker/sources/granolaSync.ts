@@ -170,10 +170,21 @@ export async function syncGranola(deps: SyncDeps): Promise<SyncResult> {
     const unique = [...new Set(ids)];
     // Create the hub once; if it exists (ours or the user's), it is left alone.
     if (unique.length) deps.saveNote({ path: MEETINGS_HUB_PATH, body: MEETINGS_HUB_BODY, expectedRev: 0, actor });
+    let missing = 0;
     for (let i = 0; i < unique.length; i += BATCH) {
-      const meetings = parseMeetings(await mcp.callTool("get_meetings", { meeting_ids: unique.slice(i, i + BATCH) }));
+      const batch = unique.slice(i, i + BATCH);
+      const meetings = parseMeetings(await mcp.callTool("get_meetings", { meeting_ids: batch }));
+      // A batch can come back short; ask again for each missing meeting on its own.
+      const got = new Set(meetings.map((meeting) => meeting.id));
+      for (const id of batch.filter((id) => !got.has(id))) {
+        const single = parseMeetings(await mcp.callTool("get_meetings", { meeting_ids: [id] }));
+        if (single.some((meeting) => meeting.id === id)) meetings.push(...single.filter((meeting) => meeting.id === id));
+        else missing++;
+      }
       for (const meeting of meetings) counts[writeMeeting(deps, actor, meeting)]++;
     }
+    // Keep the cursor where it was, so the next run asks for these meetings again.
+    if (missing) throw new Error(`Granola did not return ${missing} meeting${missing === 1 ? "" : "s"}; the next sync tries again.`);
 
     // Only a run that wrote everything moves the cursor, so a failure is retried next time.
     deps.sql.exec(
