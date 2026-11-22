@@ -6,6 +6,7 @@ import { webPrincipal } from "./auth/principal";
 import { hosts } from "./config";
 import { deleteSession } from "./control/accounts";
 import { eraseDeletedWorkspaces } from "./control/workspaceDeletion";
+import { privateRobots } from "./site/discovery";
 import { handleSite } from "./site/handler";
 
 export { Workspace } from "./workspace/workspace";
@@ -29,6 +30,8 @@ function withSecurityHeaders(response: Response): Response {
   secured.headers.set("x-content-type-options", "nosniff");
   secured.headers.set("referrer-policy", "same-origin");
   secured.headers.set("x-frame-options", "DENY");
+  // The app is all signed-in pages: nothing in it belongs in search results.
+  secured.headers.set("x-robots-tag", "noindex, nofollow");
   return secured;
 }
 
@@ -37,6 +40,7 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
   const path = url.pathname;
 
   if (path === "/health") return Response.json({ ok: true });
+  if (path === "/robots.txt") return new Response(privateRobots, { headers: { "content-type": "text/plain; charset=utf-8" } });
   if (path === "/authorize") return handleAuthorize(request, env);
   if (path.startsWith("/oauth/") || path.startsWith("/.well-known/")) {
     return servers(env).authorization.fetch(request, env, ctx);
@@ -66,6 +70,7 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
 async function handleMcpHost(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const { appOrigin, mcpPath } = hosts(env);
+  if (url.pathname === "/robots.txt") return new Response(privateRobots, { headers: { "content-type": "text/plain; charset=utf-8" } });
   // Someone opening the MCP address (or the bare host) in a browser gets the how-to-connect page.
   const wantsPage =
     request.method === "GET" &&

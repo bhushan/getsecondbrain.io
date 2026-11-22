@@ -61,9 +61,9 @@ describe("public site on the www host", () => {
   it("keeps every page free of inline scripts, event handlers and outside assets", async () => {
     for (const path of ["/", "/privacy", "/terms", "/nope"]) {
       const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
-      expect(html).not.toMatch(/<script(?![^>]*\bsrc="\/site\.js")/i);
+      expect(html).not.toMatch(/<script(?![^>]*\bsrc="\/site\.js")(?![^>]*type="application\/ld\+json")/i);
       expect(html).not.toMatch(/\son[a-z]+=/i);
-      expect(html).not.toMatch(/(src|href)="https?:\/\/(?!app\.test|developers\.google\.com)/);
+      expect(html).not.toMatch(/(src|href)="https?:\/\/(?!app\.test|www\.test\/|developers\.google\.com)/);
       expect(html).not.toContain("data:");
     }
   });
@@ -208,5 +208,74 @@ describe("public site on the www host", () => {
     const html = await response.text();
     expect(html).toContain("<title>Page not found, Second Brain</title>");
     expect(html).toMatch(/<a class="button primary" href="\/">Go to the home page<\/a>/);
+  });
+});
+
+describe("search engines and answer engines", () => {
+  const SITE_ORIGIN = "https://www.test";
+
+  it("gives every page a canonical address on the site host", async () => {
+    for (const path of ["/", "/privacy", "/terms"]) {
+      const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
+      expect(html).toContain(`<link rel="canonical" href="${SITE_ORIGIN}${path}">`);
+      expect(html).toContain(`<meta property="og:url" content="${SITE_ORIGIN}${path}">`);
+      expect(html).not.toContain('name="robots" content="noindex"');
+    }
+  });
+
+  it("keeps the not-found page out of search results", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/nope`)).text();
+    expect(html).toContain('<meta name="robots" content="noindex">');
+  });
+
+  it("describes the product and answers the FAQ as structured data", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json">([^<]*)<\/script>/g)].map((m) => JSON.parse(m[1]!));
+    const graph = blocks.flatMap((block) => block["@graph"] ?? [block]);
+    const types = graph.map((item: { "@type": string }) => item["@type"]);
+    expect(types).toEqual(expect.arrayContaining(["Organization", "WebSite", "SoftwareApplication", "FAQPage"]));
+    const faq = graph.find((item: { "@type": string }) => item["@type"] === "FAQPage");
+    expect(faq.mainEntity.length).toBeGreaterThanOrEqual(5);
+    expect(faq.mainEntity.map((q: { name: string }) => q.name)).toContain("What are skills?");
+    for (const q of faq.mainEntity) expect(q.acceptedAnswer.text).not.toMatch(/<[a-z]/i);
+  });
+
+  it("serves robots.txt that allows crawling and points at the sitemap", async () => {
+    const response = await exports.default.fetch(`${SITE}/robots.txt`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    const text = await response.text();
+    expect(text).toMatch(/User-agent: \*\nAllow: \//);
+    expect(text).toContain(`Sitemap: ${SITE_ORIGIN}/sitemap.xml`);
+  });
+
+  it("lists the public pages in sitemap.xml", async () => {
+    const response = await exports.default.fetch(`${SITE}/sitemap.xml`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/xml");
+    const xml = await response.text();
+    for (const path of ["/", "/privacy", "/terms"]) expect(xml).toContain(`<loc>${SITE_ORIGIN}${path}</loc>`);
+  });
+
+  it("serves llms.txt: a plain summary for AI answer engines", async () => {
+    const response = await exports.default.fetch(`${SITE}/llms.txt`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/markdown");
+    const text = await response.text();
+    expect(text).toMatch(/^# Second Brain\n\n> /);
+    expect(text).toContain("MCP");
+    expect(text).toContain("## FAQ");
+    expect(text).toContain(`${SITE_ORIGIN}/privacy`);
+    expect(text).not.toMatch(/<[a-z]/i);
+  });
+
+  it("keeps the app and the MCP host out of search results", async () => {
+    const appRobots = await exports.default.fetch("https://app.test/robots.txt");
+    expect(appRobots.headers.get("content-type")).toContain("text/plain");
+    expect(await appRobots.text()).toMatch(/User-agent: \*\nDisallow: \//);
+    const mcpRobots = await exports.default.fetch("https://mcp.test/robots.txt", { headers: { host: "mcp.test" } });
+    expect(await mcpRobots.text()).toMatch(/User-agent: \*\nDisallow: \//);
+    const appPage = await exports.default.fetch("https://app.test/connect");
+    expect(appPage.headers.get("x-robots-tag")).toBe("noindex, nofollow");
   });
 });

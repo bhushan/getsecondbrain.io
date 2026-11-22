@@ -1,4 +1,5 @@
 import { hosts } from "../config";
+import { llmsTxt, siteRobots, sitemap } from "./discovery";
 import { SITE_CSP, landingPage, notFoundPage, privacyPage, termsPage } from "./pages";
 
 /** Static files the site may serve. Nothing else of the app is exposed here. */
@@ -9,6 +10,9 @@ const SITE_FOLDERS = /^\/(fonts|logos)\/[a-z0-9-]+\.(woff2|svg)$/;
 const PAGE_ASSETS = new Set(["/site.js", "/site.css", "/tokens.css"]);
 
 const PAGE_CACHE = "public, max-age=300";
+
+const textFile = (body: string, type: string) =>
+  new Response(body, { headers: { "content-type": `${type}; charset=utf-8`, "cache-control": PAGE_CACHE, "x-content-type-options": "nosniff" } });
 
 function html(body: string, status = 200): Response {
   return new Response(body, {
@@ -33,6 +37,9 @@ export async function handleSite(request: Request, env: Env): Promise<Response> 
   if (path === "/") return html(landingPage(origins, mcpResource));
   if (path === "/privacy") return html(privacyPage(origins));
   if (path === "/terms") return html(termsPage(origins));
+  if (path === "/robots.txt") return textFile(siteRobots(origins.site), "text/plain");
+  if (path === "/sitemap.xml") return textFile(sitemap(origins.site), "application/xml");
+  if (path === "/llms.txt") return textFile(llmsTxt(origins.site, appOrigin), "text/markdown");
   if (path === "/favicon.ico") return Response.redirect(new URL("/favicon-32.png", request.url).toString(), 301);
   if (SITE_FILES.has(path) || SITE_FOLDERS.test(path)) {
     const asset = await env.ASSETS.fetch(request);

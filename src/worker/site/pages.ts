@@ -33,13 +33,23 @@ interface Page {
   description: string;
   body: string;
   origins: Origins;
+  /** The page's own path, for its canonical address. Null for pages search engines should skip. */
+  path: string | null;
   script?: boolean;
+  /** Structured data (schema.org) for search and answer engines. */
+  structured?: unknown;
 }
 
-function shell({ title, description, body, origins, script = false }: Page): string {
+/** JSON for a data block inside HTML: `<` is escaped so no text can close the script element. */
+const jsonForHtml = (data: unknown) => JSON.stringify(data).replace(/</g, "\\u003c");
+
+function shell({ title, description, body, origins, path, script = false, structured }: Page): string {
+  const url = path === null ? null : `${origins.site}${path}`;
+  const indexing = url ? `<link rel="canonical" href="${url}"><meta property="og:url" content="${url}">` : `<meta name="robots" content="noindex">`;
   return `<!doctype html>
 <html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${title}</title><meta name="description" content="${description}">
+${indexing}
 <meta name="color-scheme" content="dark"><meta name="theme-color" content="#09090b">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -50,7 +60,7 @@ function shell({ title, description, body, origins, script = false }: Page): str
 <meta property="og:image:alt" content="Second Brain: one memory for every AI app you use.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/tokens.css">
-<link rel="stylesheet" href="/site.css">${script ? `\n<script src="/site.js" defer></script>` : ""}</head><body>${body}</body></html>`;
+<link rel="stylesheet" href="/site.css">${structured ? `\n<script type="application/ld+json">${jsonForHtml(structured)}</script>` : ""}${script ? `\n<script src="/site.js" defer></script>` : ""}</head><body>${body}</body></html>`;
 }
 
 /* Icons: 24px line icons drawn with currentColor, always decorative (the text beside them says it). */
@@ -115,7 +125,7 @@ const footer = (appOrigin: string) => `<footer class="footer"><div class="wrap">
 
 /** The apps with a setup guide in the app, so the site and the guides never disagree. */
 const GUIDED_APPS = connectGuides("https://example.invalid/mcp").filter((guide) => guide.id !== "other");
-const APP_NAMES = GUIDED_APPS.map((guide) => guide.name);
+export const APP_NAMES = GUIDED_APPS.map((guide) => guide.name);
 
 const appList = (hidden: boolean) =>
   `<ul class="marquee-track"${hidden ? ' aria-hidden="true"' : ""}>${GUIDED_APPS.map((app) => `<li class="app-pill">${logo(app.id)}${app.name}</li>`).join("")}<li class="app-pill any">${icon("plug", "icon app-logo")}Any MCP app</li></ul>`;
@@ -132,9 +142,9 @@ const DEVICES: [IconName, string][] = [
 ];
 const deviceRow = () => `<ul class="devices" aria-label="Where it works">${DEVICES.map(([name, label]) => `<li>${icon(name)}${label}</li>`).join("")}</ul>`;
 
-const listInWords = (names: string[]) => `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+export const listInWords = (names: string[]) => `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 
-const FAQ: [string, string][] = [
+export const FAQ: [string, string][] = [
   ["Which apps can connect?", `Any app or agent that supports MCP connectors. There are step-by-step guides for ${listInWords(APP_NAMES)}.`],
   ["Does it work on my phone?", "Yes. Second Brain lives online, so a connected app can reach your notes wherever it runs: in the browser, in desktop and phone apps, in your editor and in the terminal. In Claude, a connector you add on the web also works in the mobile app."],
   ["Do I need to install anything?", "No. You add one address to each app. Chat apps take it in their settings, and terminal agents add it with one command. Each guide in Second Brain shows exactly where it goes."],
@@ -144,6 +154,55 @@ const FAQ: [string, string][] = [
   ["Who can read my notes?", "You, and the apps you connect to that workspace. Notes are encrypted at rest and in transit, but not end to end, because Second Brain has to read them to search and to answer your apps. Your notes are never used to train AI models."],
   ["How do I get access?", `Second Brain is in private beta and access is by invitation. Write to <a href="mailto:${CONTACT}">${CONTACT}</a> to ask for a place.`],
 ];
+
+/** Text without markup, for structured data and llms.txt. */
+export const plainText = (html: string) => html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+
+export const SITE_SUMMARY =
+  "Second Brain keeps your notes as one linked map that every AI app you connect can search, read and add to, through one MCP address. Save something in Claude, find it in ChatGPT, Cursor or your terminal. Write skills once and every connected app can follow them.";
+
+/** schema.org data for the landing page: who makes it, what it is, and the FAQ as answers. */
+function landingStructuredData(origins: Origins) {
+  const home = `${origins.site}/`;
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${home}#organization`,
+        name: "Second Brain",
+        url: home,
+        logo: `${origins.site}/logo-512.png`,
+        email: CONTACT,
+      },
+      { "@type": "WebSite", "@id": `${home}#website`, name: "Second Brain", url: home, publisher: { "@id": `${home}#organization` } },
+      {
+        "@type": "SoftwareApplication",
+        name: "Second Brain",
+        url: home,
+        description: SITE_SUMMARY,
+        applicationCategory: "ProductivityApplication",
+        operatingSystem: "Web",
+        publisher: { "@id": `${home}#organization` },
+        featureList: [
+          "One memory shared by every AI app you connect",
+          "Works with any app or agent that supports MCP, including " + listInWords(APP_NAMES),
+          "Notes kept as a linked map, with every revision saved",
+          "Skills: instructions you write once for every connected app",
+          "Separate workspaces, read-only or read and write access, apps never delete",
+        ],
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: FAQ.map(([question, answer]) => ({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: { "@type": "Answer", text: plainText(answer) },
+        })),
+      },
+    ],
+  };
+}
 
 /*
  * The hero map. Fixed coordinates; each note and link is classed by its distance (in links) from the
@@ -263,7 +322,7 @@ const recallVisual = () => `<div class="mini search" aria-hidden="true">
 <ul><li class="hit">${icon("note")}<span>Work/Deploy checklist</span><span class="from">Claude Code</span></li><li>${icon("note")}<span>Work/Releases</span></li><li>${icon("note")}<span>Projects/Site launch</span></li></ul>
 </div>`;
 
-const RULES: [IconName, string, string][] = [
+export const RULES: [IconName, string, string][] = [
   ["layers", "Separate workspaces", "Each workspace is kept apart. An app only sees the one you chose when you connected it."],
   ["pen", "Read, or read and write", "You decide whether an app can only search and read, or can also save new notes."],
   ["shield", "Apps never delete", "Apps can never delete a note. Only you can, and the trash lets you take it back."],
@@ -305,7 +364,9 @@ export function landingPage(origins: Origins, mcpResource: string): string {
     title: "Second Brain: one memory for every AI app",
     description: "Keep your notes as one linked map, and let Claude, ChatGPT, Cursor and any other AI app or agent save and recall them through one MCP address.",
     origins,
+    path: "/",
     script: true,
+    structured: landingStructuredData(origins),
     body: `<header class="hero">
 <div class="hero-glow" aria-hidden="true"></div>
 ${nav(origins.app)}
@@ -410,11 +471,12 @@ ${nav(appOrigin)}
 <div class="hero-copy"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p class="lede">${sub}</p></div>
 </header>`;
 
-const docPage = (origins: Origins, title: string, description: string, content: string) =>
+const docPage = (origins: Origins, path: string, title: string, description: string, content: string) =>
   shell({
     title: `${title}, Second Brain`,
     description,
     origins,
+    path,
     body: `${pageHead(origins.app, "Legal", title, `Effective ${EFFECTIVE}`)}
 <main class="doc">${content}</main>${footer(origins.app)}`,
   });
@@ -424,6 +486,7 @@ export function notFoundPage(origins: Origins): string {
     title: "Page not found, Second Brain",
     description: "That page does not exist.",
     origins,
+    path: null,
     body: `<header class="hero page-head not-found">
 <div class="hero-glow" aria-hidden="true"></div>
 ${nav(origins.app)}
@@ -436,6 +499,7 @@ ${nav(origins.app)}
 export function privacyPage(origins: Origins): string {
   return docPage(
     origins,
+    "/privacy",
     "Privacy policy",
     "What Second Brain collects, why, and the choices you have.",
     `<p>Second Brain is a hosted notes service. This policy explains what we collect, how we use it, and what you can do about it. Questions go to <a href="mailto:${CONTACT}">${CONTACT}</a>.</p>
@@ -482,6 +546,7 @@ export function termsPage(origins: Origins): string {
   const appOrigin = origins.app;
   return docPage(
     origins,
+    "/terms",
     "Terms of service",
     "The rules for using Second Brain.",
     `<p>These terms apply when you use Second Brain at <a href="${appOrigin}/">${new URL(appOrigin).host}</a> and through its MCP connector. By using it you agree to them. Questions go to <a href="mailto:${CONTACT}">${CONTACT}</a>.</p>
