@@ -44,6 +44,19 @@ describe("renaming a workspace", () => {
   });
 });
 
+describe("who may change a workspace", () => {
+  it("lets a member who is not the owner neither rename nor delete it", async () => {
+    const owner = await withTwo();
+    const member = await signIn();
+    await env.DB.prepare("INSERT INTO memberships (user_id, workspace_id, role, created_at) VALUES (?, ?, 'member', ?)")
+      .bind(member.user.id, owner.second.id, Date.now())
+      .run();
+    expect((await member.api("/api/workspace", send("PATCH", { name: "Taken" }, owner.second.id))).status).toBe(403);
+    expect((await member.api("/api/workspace", send("DELETE", { confirm: "Work" }, owner.second.id))).status).toBe(403);
+    expect((await me(owner.api)).workspaces.find((w) => w.id === owner.second.id)?.name).toBe("Work");
+  });
+});
+
 describe("deleting a workspace", () => {
   it("refuses unless the exact workspace name is typed", async () => {
     const { api, second } = await withTwo();
