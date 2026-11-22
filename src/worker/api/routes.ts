@@ -4,6 +4,7 @@ import { hosts } from "../config";
 import { oauthApi } from "../auth/oauth";
 import { actorOf, type Principal } from "../auth/principal";
 import { parsePath } from "../lib/paths";
+import { handleSourcesApi } from "../sources/routes";
 
 const MAX_NOTE_BYTES = 1024 * 1024;
 const MAX_LAYOUT_BYTES = 8 * 1024 * 1024;
@@ -57,6 +58,10 @@ export async function handleApi(request: Request, env: Env, user: User, principa
   const param = (name: string) => url.searchParams.get(name);
 
   try {
+    if (url.pathname.startsWith("/api/sources")) {
+      const handled = await handleSourcesApi(request, env, user, principal);
+      if (handled) return handled;
+    }
     switch (route) {
       case "GET /api/me":
         return json({

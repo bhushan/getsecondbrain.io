@@ -8,8 +8,14 @@ import { deleteSession } from "./control/accounts";
 import { eraseDeletedWorkspaces } from "./control/workspaceDeletion";
 import { privateRobots } from "./site/discovery";
 import { handleSite } from "./site/handler";
+import { GRANOLA_CALLBACK_PATH } from "./sources/granolaClient";
+import { finishGranolaConnect } from "./sources/routes";
+import { syncAllSources } from "./sources/schedule";
 
 export { Workspace } from "./workspace/workspace";
+
+/** Matches the hourly entry in `triggers.crons` (wrangler.jsonc, both environments). */
+const SOURCES_CRON = "41 * * * *";
 
 const APP_CSP = [
   "default-src 'self'",
@@ -47,6 +53,7 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
   }
   if (path === "/auth/login" && request.method === "GET") return startLogin(request, env);
   if (path === CALLBACK_PATH && request.method === "GET") return finishLogin(request, env);
+  if (path === GRANOLA_CALLBACK_PATH && request.method === "GET") return finishGranolaConnect(request, env);
   if (path === "/auth/logout" && request.method === "POST") {
     const token = readCookie(request, SESSION_COOKIE);
     if (token) await deleteSession(env.DB, token);
@@ -91,8 +98,9 @@ export default {
     return new Response("Not found", { status: 404 });
   },
 
-  /** Daily: erase workspaces whose recovery period has ended. */
-  async scheduled(_controller, env): Promise<void> {
-    await eraseDeletedWorkspaces(env);
+  /** Hourly: sync connected sources. Daily: erase workspaces whose recovery period has ended. */
+  async scheduled(controller, env): Promise<void> {
+    if (controller.cron === SOURCES_CRON) await syncAllSources(env);
+    else await eraseDeletedWorkspaces(env);
   },
 } satisfies ExportedHandler<Env>;

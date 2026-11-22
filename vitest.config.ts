@@ -18,6 +18,8 @@ export default defineConfig(async () => {
                   GOOGLE_CLIENT_ID: "google-client-id",
                   GOOGLE_CLIENT_SECRET: "google-client-secret",
                   ALLOWED_EMAILS: "founder@example.com, second@example.com",
+                  // Test-only key for sealing source tokens (32 random bytes, base64).
+                  SOURCES_KEY: "2tHngOSrt6IMuM8EHHe5ReGh0yM2NpK9oLjXL/xVr2E=",
                   TEST_MIGRATIONS: migrations,
                 },
               },

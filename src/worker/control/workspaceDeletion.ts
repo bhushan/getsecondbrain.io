@@ -60,6 +60,7 @@ export async function eraseDeletedWorkspaces(env: Env, now = Date.now()): Promis
   for (const { id } of results) {
     await env.WORKSPACE.getByName(id).erase();
     await env.DB.batch([
+      env.DB.prepare("DELETE FROM source_connections WHERE workspace_id = ?").bind(id),
       env.DB.prepare("DELETE FROM memberships WHERE workspace_id = ?").bind(id),
       env.DB.prepare("DELETE FROM workspaces WHERE id = ? AND deleted_at IS NOT NULL").bind(id),
     ]);

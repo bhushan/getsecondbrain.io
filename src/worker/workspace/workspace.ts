@@ -3,6 +3,9 @@ import { ulid } from "../lib/ids";
 import { rewriteLinks, scanMarkdown } from "../lib/markdown";
 import { type NotePath, parsePath } from "../lib/paths";
 import { assignSlugs, isSkillPath, parseSkill, SKILLS_FOLDER } from "../lib/skills";
+import { sourcesKey } from "../sources/crypto";
+import type { Tokens } from "../sources/granolaClient";
+import { connectGranola, disconnectGranola, type SourceStatus, sourceStatuses, syncGranola, type SyncResult } from "../sources/granolaSync";
 import { MIGRATIONS } from "./schema";
 import type {
   Actor,
@@ -394,6 +397,41 @@ export class Workspace extends DurableObject<Env> {
       )
       .toArray()
       .map((row) => ({ actor: JSON.parse(row.actor) as Actor, action: row.action, noteId: row.note_id, at: row.at }));
+  }
+
+  // Sources: apps that send notes in (Granola). Tokens are sealed and never leave this object.
+
+  private granolaSync: Promise<SyncResult> | null = null;
+
+  private async sourceDeps() {
+    const key = await sourcesKey(this.env);
+    if (!key) throw new Error("SOURCES_KEY is not set");
+    return {
+      sql: this.sql,
+      key,
+      getNote: (id: string) => this.getNote({ id }),
+      saveNote: (input: SaveInput) => this.saveNote(input),
+    };
+  }
+
+  sourceStatus(): SourceStatus[] {
+    return sourceStatuses(this.sql);
+  }
+
+  async connectGranola(input: { userId: string; clientId: string; tokens: Tokens }): Promise<void> {
+    await connectGranola(await this.sourceDeps(), input);
+  }
+
+  async disconnectGranola(): Promise<boolean> {
+    return disconnectGranola(await this.sourceDeps());
+  }
+
+  /** One sync at a time: a second caller waits for the running one. */
+  async syncGranola(): Promise<SyncResult> {
+    this.granolaSync ??= this.sourceDeps()
+      .then(syncGranola)
+      .finally(() => (this.granolaSync = null));
+    return this.granolaSync;
   }
 
   // Writes

@@ -76,4 +76,26 @@ export const MIGRATIONS: string[] = [
     saved_at INTEGER NOT NULL
   );
   `,
+  `
+  CREATE TABLE sources (
+    provider TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL,
+    tokens TEXT NOT NULL,
+    status TEXT NOT NULL,
+    account TEXT,
+    user_id TEXT NOT NULL,
+    synced_until TEXT,
+    last_sync_at INTEGER,
+    last_error TEXT,
+    created_at INTEGER NOT NULL
+  ) WITHOUT ROWID;
+
+  CREATE TABLE source_items (
+    provider TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    note_id TEXT NOT NULL,
+    rev INTEGER NOT NULL,
+    PRIMARY KEY (provider, external_id)
+  ) WITHOUT ROWID;
+  `,
 ];

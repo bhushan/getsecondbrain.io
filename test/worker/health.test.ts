@@ -21,6 +21,6 @@ it("serves the web app with security headers", async () => {
 it("keeps each workspace object separate", async () => {
   const a = env.WORKSPACE.getByName("workspace-a");
   const b = env.WORKSPACE.getByName("workspace-b");
-  expect(await a.schemaVersion()).toBe(2);
-  expect(await b.schemaVersion()).toBe(2);
+  expect(await a.schemaVersion()).toBe(3);
+  expect(await b.schemaVersion()).toBe(3);
 });
