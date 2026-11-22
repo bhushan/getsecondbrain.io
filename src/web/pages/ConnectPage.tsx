@@ -116,7 +116,7 @@ export function ConnectPage({ me }: { me: Me }) {
           <div className="guide-head">
             <AppMark id={guide.id} size="lg" />
             <div>
-              <h3>Set up {guide.name}</h3>
+              <h3>{guide.name}</h3>
               <p>{guide.where}</p>
             </div>
           </div>
