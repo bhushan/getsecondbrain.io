@@ -71,6 +71,7 @@ function EmptyMap({ mcpUrl, onConnect, onImport, onWrite }: { mcpUrl: string; on
 
 export function App() {
   const [me, setMe] = useState<Me | null | "signed_out">(null);
+  const [signupOpen, setSignupOpen] = useState(false);
   const [page, setPage] = useState<Page>(pageFromPath(location.pathname));
   const [selected, setSelected] = useState<string | null>(null);
   const [draftPath, setDraftPath] = useState<string | null>(null);
@@ -103,7 +104,10 @@ export function App() {
       setWorkspace(loaded.workspaceId);
       setMe(loaded);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) setMe("signed_out");
+      if (error instanceof ApiError && error.status === 401) {
+        setSignupOpen(error.body.signup === "open");
+        setMe("signed_out");
+      }
       else throw error;
     }
   }, []);
@@ -218,7 +222,7 @@ export function App() {
         <span className="sr-only">Loading</span>
       </div>
     );
-  if (me === "signed_out") return <SignIn />;
+  if (me === "signed_out") return <SignIn open={signupOpen} />;
 
   const refresh = () => setVersion((v) => v + 1);
   const newNote = () => void draft(untitledPath(graph.current?.paths() ?? [], ""));

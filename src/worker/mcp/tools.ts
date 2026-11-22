@@ -3,6 +3,7 @@ import { actorOf, type Principal, type Scope } from "../auth/principal";
 import { parsePath } from "../lib/paths";
 import { scanMarkdown } from "../lib/markdown";
 import { isSkillPath } from "../lib/skills";
+import { limitMessage } from "../workspace/limits";
 import type { NoteMeta, SkillDetail } from "../workspace/types";
 
 /**
@@ -172,6 +173,7 @@ export const TOOLS: Tool<any>[] = [
         return error(`A note already exists at "${result.note.path}" (revision ${result.note.rev}). Use update_note or append_to_note.`);
       }
       if (result.status === "protected") return protectedSkill();
+      if (result.status === "limit") return error(limitMessage(result.limit));
       if (result.status === "not_found") return error("Could not save the note.");
       return { text: `Saved ${result.note.path} (rev ${result.note.rev}).` };
     },
@@ -192,6 +194,7 @@ export const TOOLS: Tool<any>[] = [
         actor: actorOf(principal),
       });
       if (result.status === "protected") return protectedSkill();
+      if (result.status === "limit") return error(limitMessage(result.limit));
       if (result.status === "not_found") return error(`No note at "${args.path}". Use save_note to create it.`);
       if (result.status === "conflict") {
         return error(`The note changed: it is now at revision ${result.note.rev}. Read it again with get_note, then retry.`);
@@ -293,6 +296,7 @@ async function append({ workspace, principal }: Context, notePath: string, addit
       actor: actorOf(principal),
     });
     if (result.status === "protected") return protectedSkill();
+    if (result.status === "limit") return error(limitMessage(result.limit));
     if (result.status === "created" || result.status === "updated" || result.status === "unchanged") {
       return { text: `Saved ${result.note.path} (rev ${result.note.rev}).` };
     }

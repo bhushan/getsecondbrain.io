@@ -12,7 +12,7 @@ export function Troubleshooting({ url }: { url: string }) {
     },
     {
       question: "\"This account is not on the list yet\"",
-      answer: <>Second Brain is in private beta. Sign in with the Google account that has access, or ask for an invitation at hello@getsecondbrain.io.</>,
+      answer: <>Sign-up is by invitation right now. Sign in with the Google account that has access, or ask for an invitation at hello@getsecondbrain.io.</>,
     },
     {
       question: "The sign-in window closed or showed \"This sign-in link expired\"",

@@ -1,3 +1,4 @@
+import { limitMessage } from "../workspace/limits";
 import type { Actor, Note, SaveInput, SaveResult } from "../workspace/types";
 import { seal, unseal } from "./crypto";
 import { GranolaAuthError, GranolaMcp, refreshTokens, revokeToken, type Tokens } from "./granolaClient";
@@ -229,6 +230,7 @@ function writeMeeting(deps: SyncDeps, actor: Actor, meeting: Meeting): "created"
     const note = deps.getNote(item.note_id);
     if (!note || note.rev !== item.rev) return "skipped";
     const result = deps.saveNote({ path: note.path, body, expectedRev: note.rev, actor });
+    if (result.status === "limit") throw new Error(limitMessage(result.limit));
     if (result.status !== "updated" && result.status !== "unchanged") return "skipped";
     deps.sql.exec("UPDATE source_items SET rev = ? WHERE provider = ? AND external_id = ?", result.note.rev, PROVIDER, meeting.id);
     return result.status;
@@ -237,6 +239,8 @@ function writeMeeting(deps: SyncDeps, actor: Actor, meeting: Meeting): "created"
   const base = meetingPath(meeting);
   for (let copy = 1; copy <= MAX_TITLE_COPIES; copy++) {
     const result = deps.saveNote({ path: copy === 1 ? base : `${base} (${copy})`, body, expectedRev: 0, actor });
+    // Stop the run: the cursor stays put, so these meetings come again once there is room.
+    if (result.status === "limit") throw new Error(limitMessage(result.limit));
     if (result.status === "created") {
       deps.sql.exec(
         "INSERT INTO source_items (provider, external_id, note_id, rev) VALUES (?, ?, ?, ?)",

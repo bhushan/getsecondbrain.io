@@ -1,4 +1,4 @@
-import { APP_NAMES, CONTACT, FAQ, listInWords, plainText, RULES, SITE_SUMMARY } from "./pages";
+import { APP_NAMES, CONTACT, faq, listInWords, plainText, RULES, SITE_SUMMARY } from "./pages";
 
 /** Public pages, for the sitemap. */
 export const PUBLIC_PATHS = ["/", "/privacy", "/terms"];
@@ -14,11 +14,11 @@ export const sitemap = (site: string) =>
   ).join("\n")}\n</urlset>\n`;
 
 /** llms.txt (llmstxt.org): the site in plain Markdown, for AI answer engines. */
-export const llmsTxt = (site: string, app: string) => `# Second Brain
+export const llmsTxt = (site: string, app: string, open: boolean) => `# Second Brain
 
 > ${SITE_SUMMARY}
 
-Second Brain is in private beta, by invitation. Write to ${CONTACT} to ask for a place.
+${open ? `Anyone can sign in with Google and try it: ${app}/` : `Second Brain is in private beta, by invitation. Write to ${CONTACT} to ask for a place.`}
 
 ## How it works
 
@@ -40,7 +40,7 @@ ${RULES.map(([, title, text]) => `- ${title}: ${text}`).join("\n")}
 
 ## FAQ
 
-${FAQ.map(([question, answer]) => `### ${question}\n\n${plainText(answer)}`).join("\n\n")}
+${faq(open).map(([question, answer]) => `### ${question}\n\n${plainText(answer)}`).join("\n\n")}
 
 ## Links
 

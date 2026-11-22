@@ -22,7 +22,9 @@
   // Daily job: erase workspaces deleted more than 30 days ago. Hourly job: sync sources (Granola).
   "triggers": { "crons": ["17 3 * * *", "41 * * * *"] },
   // Local development: two loopback hostnames stand in for the app and MCP hosts.
+  // SIGNUP: "open" lets any verified Google account in; anything else allows only ALLOWED_EMAILS.
   "vars": {
+    "SIGNUP": "invite",
     "APP_ORIGIN": "http://localhost:8787",
     "MCP_RESOURCE": "http://127.0.0.1:8787/mcp",
     "SITE_ORIGIN": "http://www.localhost:8787"
@@ -43,6 +45,7 @@
         { "pattern": "www.getsecondbrain.io", "custom_domain": true }
       ],
       "vars": {
+        "SIGNUP": "open",
         "APP_ORIGIN": "https://app.getsecondbrain.io",
         "MCP_RESOURCE": "https://mcp.getsecondbrain.io/mcp",
         "SITE_ORIGIN": "https://www.getsecondbrain.io"

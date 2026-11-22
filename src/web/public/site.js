@@ -203,6 +203,227 @@
     start();
   }
 
+  // The brain behind the notes: hundreds of neurons drawn on a canvas under the map. Signals race
+  // along its links and cascade, a wave of activity rolls through now and then, and the pointer
+  // wakes the neurons near it. The SVG copy stays as the still image if anything here fails.
+  function liveBrain(svg) {
+    const group = svg.querySelector(".brain");
+    if (!group || !window.HTMLCanvasElement) return;
+    const TINTS = { violet: [163, 155, 255], sky: [125, 189, 240], fuchsia: [228, 154, 243], amber: [255, 192, 107], teal: [111, 208, 178] };
+    const neurons = [...group.querySelectorAll(".bn")].map((el, i) => {
+      const x = +el.getAttribute("cx");
+      const y = +el.getAttribute("cy");
+      const tint = (el.getAttribute("class").match(/b-(\w+)/) || [, "violet"])[1];
+      return { hx: x, hy: y, x, y, r: +el.getAttribute("r"), tint, rgb: TINTS[tint] || TINTS.violet, act: 0, links: [], w: 0.35 + ((i * 7) % 11) / 30, phase: i * 2.39 };
+    });
+    const links = group.dataset.edges.split(";").map((pair) => {
+      const [a, b] = pair.split(",").map(Number);
+      const link = { a: neurons[a], b: neurons[b] };
+      link.a.links.push(link.b);
+      link.b.links.push(link.a);
+      return link;
+    });
+    if (neurons.length < 10) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.className = "brain-canvas";
+    canvas.setAttribute("aria-hidden", "true");
+    const frame = svg.parentElement;
+    frame.insertBefore(canvas, svg);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas.remove();
+
+    // One soft glow per tint, drawn once and stamped for every neuron.
+    const sprites = {};
+    for (const [name, [r, g, b]] of Object.entries(TINTS)) {
+      const sprite = document.createElement("canvas");
+      sprite.width = sprite.height = 64;
+      const c = sprite.getContext("2d");
+      const grad = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, `rgba(${r},${g},${b},0.9)`);
+      grad.addColorStop(0.25, `rgba(${r},${g},${b},0.35)`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      c.fillStyle = grad;
+      c.fillRect(0, 0, 64, 64);
+      sprites[name] = sprite;
+    }
+
+    // Canvas pixels match the map's box; viewBox units map through the SVG's own transform.
+    let view = { s: 1, ox: 0, oy: 0, dpr: 1 };
+    function measure() {
+      const box = svg.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(box.width * dpr);
+      canvas.height = Math.round(box.height * dpr);
+      canvas.setAttribute("width", canvas.width);
+      canvas.setAttribute("height", canvas.height);
+      // The map is the window's last child, so the canvas pins to the bottom and its height follows its width.
+      const s = Math.min(box.width / 1200, box.height / 600);
+      view = { s: s * dpr, ox: ((box.width - 1200 * s) / 2) * dpr, oy: ((box.height - 600 * s) / 2) * dpr, dpr };
+    }
+    measure();
+    new ResizeObserver(measure).observe(svg);
+
+    const pointer = { x: 0, y: 0, active: false };
+    const hero = svg.closest(".hero");
+    hero.addEventListener("pointermove", (event) => {
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+      pointer.x = point.x;
+      pointer.y = point.y;
+      pointer.active = true;
+    });
+    hero.addEventListener("pointerleave", () => (pointer.active = false));
+
+    const signals = [];
+    const MAX_SIGNALS = 70;
+    const fire = (from, to, now, depth, speed = 1) => {
+      if (signals.length < MAX_SIGNALS) signals.push({ from, to, t0: now, dur: (260 + Math.random() * 420) / speed, depth });
+    };
+    let nextSpark = 0;
+    let nextWave = performance.now() + 2200;
+
+    let visible = true;
+    let running = false;
+    const start = () => {
+      if (running || !visible || document.hidden) return;
+      running = true;
+      requestAnimationFrame(step);
+    };
+    new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      start();
+    }).observe(svg);
+    document.addEventListener("visibilitychange", start);
+
+    let last = performance.now();
+    function step(now) {
+      const dt = Math.min((now - last) / 16.7, 3);
+      last = now;
+      const t = now / 1000;
+      const { s, ox, oy } = view;
+      const breathe = 1 + Math.sin(t * 0.55) * 0.006;
+      const px = (x) => ox + (600 + (x - 600) * breathe) * s;
+      const py = (y) => oy + (300 + (y - 300) * breathe) * s;
+
+      for (const n of neurons) {
+        n.x = n.hx + Math.sin(t * n.w + n.phase) * 2.6;
+        n.y = n.hy + Math.cos(t * n.w * 0.83 + n.phase * 1.3) * 2.6;
+        if (pointer.active) {
+          const d = Math.hypot(n.x - pointer.x, n.y - pointer.y);
+          if (d < 95) n.act = Math.max(n.act, (1 - d / 95) * 0.75);
+        }
+        n.act *= Math.pow(0.955, dt);
+      }
+
+      // Sparks: a neuron fires on its own every so often; near the pointer, much more often.
+      if (now > nextSpark) {
+        nextSpark = now + 70 + Math.random() * 90;
+        let from = neurons[Math.floor(Math.random() * neurons.length)];
+        if (pointer.active && Math.random() < 0.5) {
+          const near = neurons.filter((n) => Math.abs(n.x - pointer.x) < 80 && Math.abs(n.y - pointer.y) < 80);
+          if (near.length) from = near[Math.floor(Math.random() * near.length)];
+        }
+        const to = from.links[Math.floor(Math.random() * from.links.length)];
+        if (to) fire(from, to, now, 0);
+      }
+      // A wave: one neuron fires every link at once, and the burst rolls outward through the brain.
+      if (now > nextWave) {
+        nextWave = now + 5200 + Math.random() * 3800;
+        const from = neurons[Math.floor(Math.random() * neurons.length)];
+        from.act = 1;
+        for (const to of from.links) fire(from, to, now, -3, 1.4);
+      }
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = "lighter";
+
+      // Links: one faint pass for all, then the awake ones lit in their colour.
+      ctx.lineWidth = Math.max(0.6, 0.9 * s);
+      ctx.strokeStyle = "rgba(150, 140, 255, 0.12)";
+      ctx.beginPath();
+      for (const { a, b } of links) {
+        ctx.moveTo(px(a.x), py(a.y));
+        ctx.lineTo(px(b.x), py(b.y));
+      }
+      ctx.stroke();
+      for (const { a, b } of links) {
+        const act = Math.min(a.act, b.act);
+        if (act < 0.08) continue;
+        const [r, g, bl] = a.rgb;
+        ctx.strokeStyle = `rgba(${r},${g},${bl},${(act * 0.55).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(px(a.x), py(a.y));
+        ctx.lineTo(px(b.x), py(b.y));
+        ctx.stroke();
+      }
+
+      // Neurons: a glow that swells when active, and a small bright core.
+      for (const n of neurons) {
+        const x = px(n.x);
+        const y = py(n.y);
+        const glow = (n.r * 5 + n.act * 26) * s;
+        ctx.globalAlpha = 0.45 + n.act * 0.55;
+        ctx.drawImage(sprites[n.tint], x - glow, y - glow, glow * 2, glow * 2);
+        ctx.globalAlpha = 0.7 + n.act * 0.3;
+        const [r, g, b] = n.rgb;
+        ctx.fillStyle = n.act > 0.6 ? "#fff6e0" : `rgb(${r},${g},${b})`;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.8, n.r * s * (1 + n.act * 0.6)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Signals: a hot core with a coloured tail. Arriving lights the neuron and often carries on.
+      for (let k = signals.length - 1; k >= 0; k--) {
+        const sig = signals[k];
+        const p = (now - sig.t0) / sig.dur;
+        if (p >= 1) {
+          sig.to.act = Math.min(1, sig.to.act + 0.85);
+          const onward = sig.to.links.filter((n) => n !== sig.from);
+          const odds = sig.depth < 0 ? 0.95 : 0.62;
+          if (sig.depth < 6 && onward.length && Math.random() < odds) {
+            fire(sig.to, onward[Math.floor(Math.random() * onward.length)], now, sig.depth + 1, sig.depth < 0 ? 1.4 : 1);
+            if (sig.depth < 0 && onward.length > 1 && Math.random() < 0.5) fire(sig.to, onward[Math.floor(Math.random() * onward.length)], now, sig.depth + 1, 1.4);
+          }
+          signals.splice(k, 1);
+          continue;
+        }
+        const e = p * p * (3 - 2 * p);
+        const fx = px(sig.from.x);
+        const fy = py(sig.from.y);
+        const x = fx + (px(sig.to.x) - fx) * e;
+        const y = fy + (py(sig.to.y) - fy) * e;
+        const back = Math.max(e - 0.35, 0);
+        const [r, g, b] = sig.from.rgb;
+        const tail = ctx.createLinearGradient(fx + (px(sig.to.x) - fx) * back, fy + (py(sig.to.y) - fy) * back, x, y);
+        tail.addColorStop(0, `rgba(${r},${g},${b},0)`);
+        tail.addColorStop(1, `rgba(${r},${g},${b},0.85)`);
+        ctx.strokeStyle = tail;
+        ctx.lineWidth = Math.max(1.2, 2 * s);
+        ctx.beginPath();
+        ctx.moveTo(fx + (px(sig.to.x) - fx) * back, fy + (py(sig.to.y) - fy) * back);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        const halo = 9 * s;
+        ctx.drawImage(sprites[sig.from.tint], x - halo * 1.6, y - halo * 1.6, halo * 3.2, halo * 3.2);
+        ctx.fillStyle = "#fff6e0";
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, 1.8 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+
+      if (visible && !document.hidden) requestAnimationFrame(step);
+      else running = false;
+    }
+    svg.classList.add("live");
+    canvas.classList.add("on");
+    start();
+  }
+
   function playOnArrival(element) {
     new IntersectionObserver(
       ([entry], observer) => {
@@ -247,6 +468,12 @@
 
   const map = document.querySelector(".hero .map");
   if (map && !reduced) {
+    try {
+      liveBrain(map);
+    } catch {
+      // The brain stays as the still SVG copy.
+      map.classList.remove("live");
+    }
     try {
       liveMap(map);
     } catch {

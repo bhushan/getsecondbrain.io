@@ -1,5 +1,5 @@
 /** The signed-out screen: one card, one action. */
-export function SignIn() {
+export function SignIn({ open }: { open: boolean }) {
   const next = encodeURIComponent(location.pathname + location.search);
   return (
     <main className="signin-screen">
@@ -22,7 +22,9 @@ export function SignIn() {
           </svg>
           Sign in with Google
         </a>
-        <p className="signin-note">Private beta. Ask for access if your account is not on the list yet.</p>
+        <p className="signin-note">
+          {open ? "New here? Signing in creates your own workspace. Delete it any time in Settings." : "Private beta. Ask for access if your account is not on the list yet."}
+        </p>
       </div>
     </main>
   );

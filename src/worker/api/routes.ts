@@ -1,3 +1,4 @@
+import { deleteAccount } from "../control/accountDeletion";
 import { createWorkspace, listWorkspaces, membership, renameWorkspace, type User } from "../control/accounts";
 import { deleteWorkspace, listDeletedWorkspaces, restoreWorkspace } from "../control/workspaceDeletion";
 import { hosts } from "../config";
@@ -5,6 +6,8 @@ import { oauthApi } from "../auth/oauth";
 import { actorOf, type Principal } from "../auth/principal";
 import { parsePath } from "../lib/paths";
 import { handleSourcesApi } from "../sources/routes";
+import { hostCookie, SESSION_COOKIE } from "../auth/cookies";
+import { type LimitName, limitMessage, MAX_WORKSPACES } from "../workspace/limits";
 
 const MAX_NOTE_BYTES = 1024 * 1024;
 const MAX_LAYOUT_BYTES = 8 * 1024 * 1024;
@@ -12,6 +15,9 @@ const MAX_LAYOUT_BYTES = 8 * 1024 * 1024;
 const json = (data: unknown, status = 200, headers?: HeadersInit) =>
   Response.json(data, { status, headers: { "cache-control": "no-store", ...headers } });
 const fail = (status: number, error: string) => json({ error }, status);
+
+/** A save refused by a limit: 429 for the daily count, which clears itself; 507 for space. */
+const limited = (limit: LimitName) => json({ status: "limit", limit, error: limitMessage(limit) }, limit === "writes" ? 429 : 507);
 
 class BadRequest extends Error {}
 
@@ -73,8 +79,24 @@ export async function handleApi(request: Request, env: Env, user: User, principa
 
       case "POST /api/workspaces": {
         const body = await readJson<{ name?: unknown }>(request, 4096);
-        return json(await createWorkspace(env.DB, user.id, workspaceName(body.name)), 201);
+        const name = workspaceName(body.name);
+        const owned = await env.DB.prepare("SELECT COUNT(*) AS n FROM workspaces WHERE owner_id = ? AND deleted_at IS NULL").bind(user.id).first<number>("n");
+        if ((owned ?? 0) >= MAX_WORKSPACES) return fail(409, `You can have up to ${MAX_WORKSPACES} workspaces. Delete one to make room.`);
+        return json(await createWorkspace(env.DB, user.id, name), 201);
       }
+
+      // Only the signed-in user's own account; the email must be typed to confirm.
+      case "DELETE /api/account": {
+        const body = await readJson<{ confirm?: unknown }>(request, 4096);
+        if (typeof body.confirm !== "string" || body.confirm.trim().toLowerCase() !== user.email.toLowerCase()) {
+          throw new BadRequest("Type your account's email exactly to delete it");
+        }
+        await deleteAccount(env, user.id);
+        return json({ ok: true }, 200, { "set-cookie": hostCookie(SESSION_COOKIE, "", 0) });
+      }
+
+      case "GET /api/usage":
+        return json(await workspace.usage());
 
       // Rename and delete act on the current workspace, which webPrincipal checked; only its owner may.
       case "PATCH /api/workspace": {
@@ -135,6 +157,7 @@ export async function handleApi(request: Request, env: Env, user: User, principa
           expectedRev: body.expectedRev as number | undefined,
           actor,
         });
+        if (result.status === "limit") return limited(result.limit);
         const status = { created: 201, updated: 200, unchanged: 200, conflict: 409, not_found: 404, protected: 403 }[result.status];
         return json(result, status);
       }
@@ -142,6 +165,7 @@ export async function handleApi(request: Request, env: Env, user: User, principa
       case "POST /api/notes/rename": {
         const body = await readJson<{ id?: unknown; path?: unknown }>(request, 4096);
         const result = await workspace.renameNote({ id: text(body.id, "id"), path: notePath(body.path), actor });
+        if (result.status === "limit") return limited(result.limit);
         return json(result, { renamed: 200, exists: 409, not_found: 404, protected: 403 }[result.status]);
       }
 

@@ -1,3 +1,5 @@
+import type { LimitName } from "./limits";
+
 /** Who made a change: the signed-in user, or an app connected over MCP on their behalf. */
 export interface Actor {
   kind: "user" | "app";
@@ -35,13 +37,16 @@ export type SaveResult =
   /** `expectedRev` was above 0 but there is no note at that path. */
   | { status: "not_found" }
   /** A connected app tried to write a skill. Only the user writes skills, since apps follow them. */
-  | { status: "protected" };
+  | { status: "protected" }
+  /** The workspace is at a fair-use limit (see limits.ts). Nothing was written. */
+  | { status: "limit"; limit: LimitName };
 
 export type RenameResult =
   | { status: "renamed"; note: NoteMeta }
   | { status: "exists" }
   | { status: "not_found" }
-  | { status: "protected" };
+  | { status: "protected" }
+  | { status: "limit"; limit: LimitName };
 
 /** A skill as listed: everything but its instructions. */
 export interface SkillSummary {

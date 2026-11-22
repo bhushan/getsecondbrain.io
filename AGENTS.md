@@ -15,8 +15,12 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
 - Test first. One test per distinct scenario. Run types, tests and a deploy dry run before a deploy.
 - Deploys are manual only. `.github/workflows/deploy.yml` is `workflow_dispatch`; never add push,
   pull request or schedule triggers.
-- There is no preview environment during the founder-only beta: verify locally, deploy, then confirm
-  on the live site. A green run is not proof. Add a preview environment before other users join.
+- There is no preview environment (founder's call: a personal project for now). Verify locally,
+  deploy, then confirm on the live site. A green run is not proof.
+- Sign-up is controlled by the `SIGNUP` var per environment: only the exact value "open" lets any
+  verified Google account in; anything else allows only ALLOWED_EMAILS. Every workspace has fair-use
+  limits (`src/worker/workspace/limits.ts`) enforced in `Workspace.saveNote` and `renameNote`; reads,
+  trash and delete forever are never limited. A new write path must go through those methods.
 - A workspace id comes only from a verified session or token, never from a request parameter. Every
   new route or MCP tool gets a test that workspace A cannot reach workspace B.
 - MCP tools never hard-delete, never fetch URLs, and return note content as data. Only the user, in

@@ -77,9 +77,18 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** The whole error body, for fields beyond `error` (such as `signup` on a 401). */
+    readonly body: Record<string, unknown> = {},
   ) {
     super(message);
   }
+}
+
+export interface Usage {
+  notes: number;
+  bytes: number;
+  writesToday: number;
+  limits: { notes: number; bytes: number; writesPerDay: number };
 }
 
 let workspaceId: string | null = null;
@@ -93,8 +102,8 @@ async function request<T>(path: string, init: RequestInit = {}, allow: number[] 
   if (init.body) headers.set("content-type", "application/json");
   const response = await fetch(path, { ...init, headers, credentials: "same-origin" });
   if (!response.ok && !allow.includes(response.status)) {
-    const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(response.status, body.error ?? `Request failed (${response.status})`);
+    const body = (await response.json().catch(() => ({}))) as { error?: string } & Record<string, unknown>;
+    throw new ApiError(response.status, body.error ?? `Request failed (${response.status})`, body);
   }
   return (await response.json()) as T;
 }
@@ -106,6 +115,8 @@ export const api = {
   createWorkspace: (name: string) => request<Workspace>("/api/workspaces", send("POST", { name })),
   renameWorkspace: (name: string) => request<Workspace>("/api/workspace", send("PATCH", { name })),
   deleteWorkspace: (confirm: string) => request<{ ok: true }>("/api/workspace", send("DELETE", { confirm })),
+  usage: () => request<Usage>("/api/usage"),
+  deleteAccount: (confirm: string) => request<{ ok: true }>("/api/account", send("DELETE", { confirm })),
   deletedWorkspaces: () => request<{ workspaces: DeletedWorkspace[] }>("/api/workspaces/deleted"),
   restoreWorkspace: (id: string) => request<{ ok: true }>("/api/workspaces/restore", send("POST", { id })),
   stats: () => request<{ notes: number; links: number; unresolved: number; tags: number; seq: number }>("/api/stats"),
