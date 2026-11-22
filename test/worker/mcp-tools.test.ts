@@ -13,7 +13,7 @@ const principal = (scopes: Principal["scopes"] = ["read", "write"]): Principal =
 const call = (who: Principal, name: string, args: Record<string, unknown> = {}) => runTool(env, who, name, args);
 
 describe("MCP tool list", () => {
-  it("offers no tool that deletes, trashes or fetches a URL", () => {
+  it("offers no tool that deletes for good or fetches a URL; trashing is the only removal", () => {
     const names = TOOLS.map((tool) => tool.name);
     expect(names).toEqual([
       "search",
@@ -25,10 +25,11 @@ describe("MCP tool list", () => {
       "update_note",
       "append_to_note",
       "link_notes",
+      "trash_note",
       "list_skills",
       "use_skill",
     ]);
-    expect(names.filter((name) => /delete|trash|remove|fetch|url/.test(name))).toEqual([]);
+    expect(names.filter((name) => /delete|remove|erase|purge|fetch|url/.test(name))).toEqual([]);
   });
 
   it("marks read tools as read-only and write tools as not destructive", () => {
@@ -249,5 +250,40 @@ describe("MCP skills", () => {
     expect((await call(two, "list_skills")).text).toMatch(/no skills yet/i);
     expect((await call(two, "use_skill", { name: "secret" })).isError).toBe(true);
     expect((await call(two, "use_skill", { name: "secret", workspaceId: one.workspaceId })).isError).toBe(true);
+  });
+});
+
+describe("trash_note", () => {
+  it("moves a note to the trash, where the user can restore it, and records the app", async () => {
+    const who = principal();
+    await call(who, "save_note", { path: "Projects/Old plan", body: "outdated" });
+    const result = await call(who, "trash_note", { path: "Projects/Old plan" });
+    expect(result.isError).toBeFalsy();
+    expect(result.text).toMatch(/trash/i);
+    const ws = env.WORKSPACE.getByName(who.workspaceId);
+    expect(await ws.getNote({ path: "Projects/Old plan" })).toBeNull();
+    const trashed = await ws.listTrash();
+    expect(trashed.map((note) => note.path)).toEqual(["Projects/Old plan"]);
+    expect((await ws.listAudit(1))[0]!.actor).toMatchObject({ kind: "app" });
+    expect(await ws.restoreNote({ id: trashed[0]!.id, actor: { kind: "user", id: who.userId } })).toMatchObject({ path: "Projects/Old plan" });
+  });
+
+  it("says when there is no note at the path", async () => {
+    expect(await call(principal(), "trash_note", { path: "Nope" })).toMatchObject({ isError: true });
+  });
+
+  it("cannot trash a note in another workspace", async () => {
+    const one = principal();
+    const two = principal();
+    await call(one, "save_note", { path: "Secret", body: "x" });
+    expect(await call(two, "trash_note", { path: "Secret" })).toMatchObject({ isError: true });
+    expect(await env.WORKSPACE.getByName(one.workspaceId).getNote({ path: "Secret" })).not.toBeNull();
+  });
+
+  it("is refused on a read-only connection", async () => {
+    const who = principal(["read"]);
+    await env.WORKSPACE.getByName(who.workspaceId).saveNote({ path: "Keep", body: "x", actor: { kind: "user", id: who.userId } });
+    expect(await call(who, "trash_note", { path: "Keep" })).toMatchObject({ isError: true });
+    expect(await env.WORKSPACE.getByName(who.workspaceId).getNote({ path: "Keep" })).not.toBeNull();
   });
 });

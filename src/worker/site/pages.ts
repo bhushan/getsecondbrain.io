@@ -153,7 +153,7 @@ export const faq = (open: boolean): [string, string][] => [
   ["Which apps can connect?", `Any app or agent that supports MCP connectors. There are step-by-step guides for ${listInWords(APP_NAMES)}.`],
   ["Does it work on my phone?", "Yes. Second Brain lives online, so a connected app can reach your notes wherever it runs: in the browser, in desktop and phone apps, in your editor and in the terminal. In Claude, a connector you add on the web also works in the mobile app."],
   ["Do I need to install anything?", "No. You add one address to each app. Chat apps take it in their settings, and terminal agents add it with one command. Each guide in Second Brain shows exactly where it goes."],
-  ["Can a connected app delete my notes?", "No. Apps can search, read and, if you allow it, save notes. Only you can move a note to the trash, and you can restore it from there."],
+  ["Can a connected app delete my notes?", "Not for good. Apps can search and read and, if you allow it, save notes and move them to the trash. Only you can delete a note forever, and you can restore anything from the trash."],
   ["What are skills?", "Instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps you allow to write can add and update skills too, and every change keeps its earlier version."],
   ["Can I bring my Obsidian vault?", "Yes. Pick the vault folder and every note comes in with its links, tags and folders. Importing again skips notes that have not changed."],
   ["Who can read my notes?", "You, and the apps you connect to that workspace. Notes are encrypted at rest and in transit, but not end to end, because Second Brain has to read them to search and to answer your apps. Your notes are never used to train AI models."],
@@ -196,7 +196,7 @@ function landingStructuredData(origins: Origins) {
           "Works with any app or agent that supports MCP, including " + listInWords(APP_NAMES),
           "Notes kept as a linked network, with every revision saved",
           "Skills: instructions you write once for every connected app",
-          "Separate workspaces, read-only or read and write access, apps never delete",
+          "Separate workspaces, read-only or read and write access, only you delete for good",
         ],
       },
       {
@@ -324,7 +324,7 @@ ${HERO_MAP}</div>`;
 const floatingCards = () => `<div class="floats" aria-hidden="true">
 <div class="float f1">${logo("claude")}<div><strong>Claude saved</strong><span>Trips/Lisbon</span></div><span class="tag">New</span></div>
 <div class="float f2">${logo("cursor")}<div><strong>Cursor searched</strong><span>“deploy checklist”</span></div></div>
-<div class="float f3"><div><strong>Personal workspace</strong><span class="perm"><span class="on">${icon("check")}Read</span><span class="on">${icon("check")}Write</span><span class="off">${icon("ban")}Delete</span></span></div></div>
+<div class="float f3"><div><strong>Personal workspace</strong><span class="perm"><span class="on">${icon("check")}Read</span><span class="on">${icon("check")}Write</span><span class="off">${icon("ban")}Delete forever</span></span></div></div>
 <div class="float f4">${logo("chatgpt")}<div><strong>ChatGPT recalled</strong><span>Trips/Lisbon</span></div></div>
 </div>`;
 
@@ -352,7 +352,7 @@ const recallVisual = () => `<div class="mini search" aria-hidden="true">
 export const RULES: [IconName, string, string][] = [
   ["layers", "Separate workspaces", "Each workspace is kept apart. An app only sees the one you chose when you connected it."],
   ["pen", "Read, or read and write", "You decide whether an app can only search and read, or can also save new notes."],
-  ["shield", "Apps never delete", "Apps can never delete a note. Only you can, and the trash lets you take it back."],
+  ["shield", "Only you delete for good", "Apps can move a note to the trash, never delete it. You review the trash and restore or delete forever."],
   ["history", "Every change kept", "Each edit is saved as a revision, and the activity log shows which app did what."],
   ["unplug", "Disconnect any time", "See what each connected app did, and disconnect any app at any time."],
   ["ban", "Never used to train AI models", "Your notes are used only to run Second Brain for you. They are never sold and never used to train AI models."],

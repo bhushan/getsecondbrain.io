@@ -245,7 +245,7 @@ describe("public site on the www host", () => {
 
   it("explains what apps can and cannot do, including that notes never train models", async () => {
     const html = await (await exports.default.fetch(`${SITE}/`)).text();
-    for (const rule of ["Separate workspaces", "Read, or read and write", "Apps never delete", "Every change kept", "Disconnect any time", "Never used to train AI models"]) {
+    for (const rule of ["Separate workspaces", "Read, or read and write", "Only you delete for good", "Every change kept", "Disconnect any time", "Never used to train AI models"]) {
       expect(html).toContain(`<h3>${rule}</h3>`);
     }
   });

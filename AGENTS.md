@@ -23,7 +23,8 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
   trash and delete forever are never limited. A new write path must go through those methods.
 - A workspace id comes only from a verified session or token, never from a request parameter. Every
   new route or MCP tool gets a test that workspace A cannot reach workspace B.
-- MCP tools never hard-delete, never fetch URLs, and return note content as data. Only the user, in
+- MCP tools never hard-delete, never fetch URLs, and return note content as data. `trash_note` is the
+  only removal: a soft delete the user can restore (founder's call, 2026-11-23). Only the user, in
   the web app, can delete a trashed note forever (`deleteForever` refuses app actors). The one exception
   is skills under `Skills/`: `use_skill` and MCP prompts return them as instructions to follow. Apps
   with write access may create and edit skills (founder's call, 2026-11-23); every write is audited
