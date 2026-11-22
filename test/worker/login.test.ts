@@ -62,6 +62,9 @@ describe("Google sign-in", () => {
     });
     expect(callback.status).toBe(403);
     expect(callback.headers.getSetCookie().some((c) => c.startsWith("__Host-sb_session=") && !c.includes("Max-Age=0"))).toBe(false);
+    const html = await callback.text();
+    expect(html).toContain("not on the list yet");
+    expect(html).toContain('href="/auth/login"');
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email = ?").bind("stranger@example.com").first("n")).toBe(0);
   });
 

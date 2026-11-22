@@ -1,6 +1,7 @@
 // Landing page enhancement for www. The page is complete without this file.
 // 1. The hero map becomes a live spring field: notes drift, part around the pointer, links follow.
 // 2. The relay section plays its "save in one app, find in another" story once, when scrolled to.
+// 3. The connector address gets a copy button, and the phone menu closes once a link is chosen.
 (() => {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -102,6 +103,31 @@
     document.documentElement.classList.add("js");
     playOnArrival(relay);
   }
+  // Only offered where the clipboard works, so the button never appears and then fails.
+  function copyButton(row) {
+    const address = row.querySelector(".address");
+    if (!address || !navigator.clipboard) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "button primary small copy";
+    button.textContent = "Copy";
+    button.setAttribute("aria-label", "Copy the connector address");
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(address.textContent.trim());
+        button.textContent = "Copied";
+      } catch {
+        button.textContent = "Select and copy";
+      }
+      setTimeout(() => (button.textContent = "Copy"), 2000);
+    });
+    row.append(button);
+  }
+  document.querySelectorAll(".address-row").forEach(copyButton);
+
+  const menu = document.querySelector(".menu");
+  if (menu) menu.addEventListener("click", (event) => event.target.closest("a") && menu.removeAttribute("open"));
+
   const map = document.querySelector(".hero .map");
   if (map && !reduced) {
     try {

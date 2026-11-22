@@ -1,5 +1,6 @@
 import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { appLogo } from "../../src/web/appLogos";
 import { connectGuides } from "../../src/web/connectGuides";
 
 const SITE = "https://www.test";
@@ -31,7 +32,7 @@ describe("public site on the www host", () => {
     const html = await (await exports.default.fetch(`${SITE}/`)).text();
     const apps = connectGuides("https://mcp.test").filter((guide) => guide.id !== "other");
     expect(apps.length).toBeGreaterThan(5);
-    for (const app of apps) expect(html).toContain(`<li class="app-pill">${app.name}</li>`);
+    for (const app of apps) expect(html).toMatch(new RegExp(`<li class="app-pill"><img src="/logos/${app.id}\\.svg"[^>]*>${app.name}</li>`));
   });
 
   it("says plainly that any AI app or agent can connect, on any device", async () => {
@@ -50,7 +51,7 @@ describe("public site on the www host", () => {
   });
 
   it("keeps every page free of inline scripts, event handlers and outside assets", async () => {
-    for (const path of ["/", "/privacy", "/terms"]) {
+    for (const path of ["/", "/privacy", "/terms", "/nope"]) {
       const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
       expect(html).not.toMatch(/<script(?![^>]*\bsrc="\/site\.js")/i);
       expect(html).not.toMatch(/\son[a-z]+=/i);
@@ -60,8 +61,8 @@ describe("public site on the www host", () => {
   });
 
   it("holds the landing animation still for people who ask for reduced motion", async () => {
-    const html = await (await exports.default.fetch(`${SITE}/`)).text();
-    expect(html).toContain("@media (prefers-reduced-motion:reduce)");
+    const css = await (await exports.default.fetch(`${SITE}/site.css`)).text();
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
   });
 
   it("serves the privacy policy with the Google Limited Use statement", async () => {
@@ -126,5 +127,78 @@ describe("public site on the www host", () => {
     expect((await exports.default.fetch(`${SITE}/api/me`)).status).toBe(404);
     expect((await exports.default.fetch(`${SITE}/auth/login`)).status).toBe(404);
     expect((await exports.default.fetch(`${SITE}/authorize`)).status).toBe(404);
+  });
+
+  it("styles every page from its own stylesheets only, with no inline styles", async () => {
+    const csp = (await exports.default.fetch(`${SITE}/`)).headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("style-src 'self';");
+    expect(csp).not.toContain("unsafe-inline");
+    for (const path of ["/", "/privacy", "/terms", "/nope"]) {
+      const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
+      expect(html, path).not.toMatch(/<style/i);
+      expect(html, path).not.toMatch(/\sstyle=/i);
+      expect(html, path).toMatch(/<link rel="stylesheet" href="\/tokens\.css">\s*<link rel="stylesheet" href="\/site\.css">/);
+    }
+  });
+
+  it("always shows the site in the dark theme", async () => {
+    for (const path of ["/", "/privacy", "/terms", "/nope"]) {
+      const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
+      expect(html, path).toContain('<html lang="en" data-theme="dark">');
+      expect(html, path).toContain('<meta name="color-scheme" content="dark">');
+    }
+  });
+
+  it("links every section from the navigation", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    for (const id of ["how", "integrations", "security", "faq"]) {
+      expect(html).toContain(`href="/#${id}"`);
+      expect(html).toContain(`id="${id}"`);
+    }
+  });
+
+  it("offers a way to see how it works next to the main call to action", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    expect(html).toMatch(/href="https:\/\/app\.test\/"[^>]*>Open Second Brain<\/a>\s*<a[^>]*href="#how"[^>]*>See how it works<\/a>/);
+  });
+
+  it("shows each guided app's real logo next to its name", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    for (const app of connectGuides("https://mcp.test").filter((guide) => guide.id !== "other")) {
+      const logo = appLogo(app.id);
+      expect(logo, app.id).toBeDefined();
+      expect(html).toMatch(new RegExp(`<img src="${logo!.src}"[^>]*class="[^"]*${logo!.mono ? "logo-mono" : ""}[^"]*"[^>]*><h3>${app.name}</h3>`));
+    }
+  });
+
+  it("shows the connector address with the steps to connect", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    expect(html).toContain('<code class="address">https://mcp.test/mcp</code>');
+    expect(html.match(/<li class="step">/g)?.length).toBe(3);
+  });
+
+  it("explains what apps can and cannot do, including that notes never train models", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    for (const rule of ["Separate workspaces", "Read, or read and write", "Apps never delete", "Every change kept", "Disconnect any time", "Never used to train AI models"]) {
+      expect(html).toContain(`<h3>${rule}</h3>`);
+    }
+  });
+
+  it("shares a social card image from the site's own origin", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    expect(html).toContain('<meta property="og:image" content="https://www.test/og/social.png">');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+    const image = await exports.default.fetch(`${SITE}/og/social.png`);
+    expect(image.status).toBe(200);
+    expect(image.headers.get("content-type")).toContain("image/png");
+  });
+
+  it("shows a styled page with a way home for an unknown page", async () => {
+    const response = await exports.default.fetch(`${SITE}/nope`);
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-security-policy")).toContain("default-src 'none'");
+    const html = await response.text();
+    expect(html).toContain("<title>Page not found, Second Brain</title>");
+    expect(html).toMatch(/<a class="button primary" href="\/">Go to the home page<\/a>/);
   });
 });

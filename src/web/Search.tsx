@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type SearchHit } from "./api";
+import { Icon } from "./Icons";
 
 interface Props {
   onResults(ids: string[]): void;
@@ -7,7 +8,9 @@ interface Props {
   onCreate(path: string): void;
 }
 
-/** Search across titles and text. Results light up on the map as you type. */
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+/** Search across titles and text, opened with ⌘K. Results light up on the map behind the list as you type. */
 export function Search({ onResults, onOpen, onCreate }: Props) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -56,50 +59,105 @@ export function Search({ onResults, onOpen, onCreate }: Props) {
     input.current?.blur();
   };
 
+  const showing = open && query.trim().length > 0;
+  const optionId = (index: number) => `search-option-${index}`;
+
   return (
-    <div className="search" onBlur={(event) => !event.currentTarget.contains(event.relatedTarget) && setOpen(false)}>
-      <input
-        ref={input}
-        type="search"
-        placeholder="Search notes"
-        aria-label="Search notes"
-        aria-expanded={open && query.length > 0}
-        aria-controls="search-results"
-        value={query}
-        onFocus={() => setOpen(true)}
-        onChange={(event) => {
-          setQuery(event.target.value);
-          setOpen(true);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowDown") setActive((a) => Math.min(a + 1, hits.length));
-          else if (event.key === "ArrowUp") setActive((a) => Math.max(a - 1, 0));
-          else if (event.key === "Enter") choose(active);
-          else if (event.key === "Escape") {
-            setQuery("");
-            input.current?.blur();
-          } else return;
-          event.preventDefault();
-        }}
-      />
-      <kbd className="hint">⌘K</kbd>
-      {open && query.trim() && (
-        <ul className="results" id="search-results" role="listbox">
-          {hits.map((hit, index) => (
-            <li key={hit.id} role="option" aria-selected={index === active}>
-              <button tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)} className={index === active ? "active" : ""}>
-                <strong>{hit.path}</strong>
-                <span>{hit.snippet.replace(/\s+/g, " ").trim()}</span>
+    <div className="search" data-open={showing || undefined} onBlur={(event) => !event.currentTarget.contains(event.relatedTarget) && setOpen(false)}>
+      <div className="search-field">
+        <Icon name="search" />
+        <input
+          ref={input}
+          type="search"
+          placeholder="Search notes or create one"
+          aria-label="Search notes"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={showing}
+          aria-controls="search-results"
+          aria-activedescendant={showing ? optionId(active) : undefined}
+          autoComplete="off"
+          spellCheck={false}
+          value={query}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") setActive((a) => Math.min(a + 1, hits.length));
+            else if (event.key === "ArrowUp") setActive((a) => Math.max(a - 1, 0));
+            else if (event.key === "Enter") choose(active);
+            else if (event.key === "Escape") {
+              setQuery("");
+              input.current?.blur();
+            } else return;
+            event.preventDefault();
+          }}
+        />
+        <kbd className="hint" aria-hidden="true">
+          {isMac ? "⌘" : "Ctrl"} K
+        </kbd>
+      </div>
+      {showing && (
+        <div className="results">
+          <ul id="search-results" role="listbox" aria-label="Search results">
+            {hits.length > 0 && (
+              <li className="results-group" role="presentation">
+                Notes
+              </li>
+            )}
+            {hits.map((hit, index) => {
+              const parts = hit.path.split("/");
+              const name = parts.pop();
+              return (
+                <li key={hit.id} id={optionId(index)} role="option" aria-selected={index === active}>
+                  <button tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseMove={() => setActive(index)} onClick={() => choose(index)} className={index === active ? "active" : ""}>
+                    <Icon name="note" />
+                    <span className="hit">
+                      <span className="hit-title">
+                        <strong>{name}</strong>
+                        {parts.length > 0 && <span className="hit-folder">{parts.join(" / ")}</span>}
+                      </span>
+                      <span className="hit-snippet">{hit.snippet.replace(/\s+/g, " ").trim()}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+            <li className="results-group" role="presentation">
+              Create
+            </li>
+            <li id={optionId(hits.length)} role="option" aria-selected={active === hits.length}>
+              <button
+                tabIndex={-1}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseMove={() => setActive(hits.length)}
+                onClick={() => choose(hits.length)}
+                className={active === hits.length ? "active" : ""}
+              >
+                <Icon name="plus" />
+                <span className="hit">
+                  <span className="hit-title">
+                    <strong>New note “{query.trim()}”</strong>
+                  </span>
+                </span>
               </button>
             </li>
-          ))}
-          <li role="option" aria-selected={active === hits.length}>
-            <button tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(hits.length)} className={active === hits.length ? "active" : ""}>
-              <strong>Create “{query.trim()}”</strong>
-              <span>Start a new note with this name</span>
-            </button>
-          </li>
-        </ul>
+          </ul>
+          <div className="results-foot" aria-hidden="true">
+            <span>
+              <kbd>↑</kbd>
+              <kbd>↓</kbd> to move
+            </span>
+            <span>
+              <kbd>↵</kbd> to open
+            </span>
+            <span>
+              <kbd>esc</kbd> to close
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );

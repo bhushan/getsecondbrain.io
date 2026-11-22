@@ -6,12 +6,57 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import Sigma from "sigma";
 import { api, type GraphData } from "./api";
 
-/** Community tints: each cluster of closely linked notes gets one. */
-const COMMUNITY_COLORS = ["#e8f1fb", "#9fd3c7", "#f3c9a1", "#c8b9f0", "#f5e3a3", "#a8c9a3", "#f0b4c2", "#b9d4f0"];
-const HIGHLIGHT = "#ffc857";
-const DIM_NODE = "#36506d";
-const EDGE = "rgba(143, 179, 217, 0.26)";
-const EDGE_ACTIVE = "rgba(255, 200, 87, 0.75)";
+/** Map colours for one theme. Sigma draws on WebGL, so these are values rather than CSS variables. */
+interface MapTheme {
+  /** One tint per cluster of closely linked notes: soft hues around the aurora brand. */
+  communities: string[];
+  /** The open note and search hits, in the brand violet. */
+  focus: string;
+  dim: string;
+  edge: string;
+  edgeActive: string;
+  label: string;
+  labelStrong: string;
+  backdrop: string;
+  backdropBorder: string;
+  backdropShadow: string;
+}
+
+const LIGHT: MapTheme = {
+  communities: ["#8f86f7", "#d17ce6", "#eba54a", "#5ba6e0", "#4db89a", "#b394ef", "#ea8c8c", "#9b9ba6"],
+  focus: "#6d5cff",
+  dim: "#e4e4e7",
+  edge: "rgba(9, 9, 11, 0.1)",
+  edgeActive: "rgba(109, 92, 255, 0.75)",
+  label: "#52525b",
+  labelStrong: "#09090b",
+  backdrop: "#ffffff",
+  backdropBorder: "#e4e4e7",
+  backdropShadow: "rgba(9, 9, 11, 0.16)",
+};
+
+const DARK: MapTheme = {
+  communities: ["#a39bff", "#e49af3", "#ffc06b", "#7dbdf0", "#6fd0b2", "#c5a9ff", "#f4a5a5", "#a1a1aa"],
+  focus: "#8b7dff",
+  dim: "#27272a",
+  edge: "rgba(250, 250, 250, 0.09)",
+  edgeActive: "rgba(139, 125, 255, 0.8)",
+  label: "#a1a1aa",
+  labelStrong: "#fafafa",
+  backdrop: "#18181b",
+  backdropBorder: "rgba(255, 255, 255, 0.12)",
+  backdropShadow: "rgba(0, 0, 0, 0.6)",
+};
+
+const LABEL_FONT = "Inter, ui-sans-serif, system-ui, sans-serif";
+const darkQuery = () => window.matchMedia("(prefers-color-scheme: dark)");
+
+/** Follows tokens.css: a forced `<html data-theme>` wins, otherwise the system setting. */
+function currentTheme(): MapTheme {
+  const forced = document.documentElement.dataset.theme;
+  const dark = forced ? forced === "dark" : darkQuery().matches;
+  return dark ? DARK : LIGHT;
+}
 
 export interface GraphHandle {
   /** Centres a note in the part of the map not covered by `inset` (pixels hidden on the right and at the bottom). */
@@ -70,9 +115,6 @@ function buildGraph(data: GraphData): { graph: Graph; missing: number } {
   if (graph.size > 0) {
     louvain.assign(graph, { nodeCommunityAttribute: "community" });
   }
-  graph.forEachNode((node, attrs) => {
-    graph.setNodeAttribute(node, "color", COMMUNITY_COLORS[(attrs.community ?? 0) % COMMUNITY_COLORS.length]);
-  });
   return { graph, missing };
 }
 
@@ -85,6 +127,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
   const timerRef = useRef<number | undefined>(undefined);
   const state = useRef({ selected, highlighted, onSelect, onStats });
   state.current = { selected, highlighted, onSelect, onStats };
+  const theme = useRef<MapTheme>(currentTheme());
   const [error, setError] = useState<string | null>(null);
 
   const stopLayout = () => {
@@ -155,25 +198,41 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
             minCameraRatio: 0.03,
             maxCameraRatio: 8,
           },
-          nodeReducer: (node, display, _attrs, nodeState) => {
+          nodeReducer: (node, display, attrs, nodeState) => {
             const { selected, highlighted } = state.current;
+            const colors = theme.current;
             const focusSet = selected ? new Set([selected, ...graph.neighbors(selected)]) : null;
-            const result: Partial<typeof display> = { labelColor: "#dbe8f6" };
+            const result: Partial<typeof display> = {
+              color: colors.communities[(attrs.community ?? 0) % colors.communities.length],
+              labelColor: colors.label,
+              labelFont: LABEL_FONT,
+              labelSize: 12,
+              backdropColor: colors.backdrop,
+              backdropBorderColor: colors.backdropBorder,
+              backdropBorderWidth: 1,
+              backdropShadowColor: colors.backdropShadow,
+              backdropShadowBlur: 16,
+              backdropCornerRadius: 6,
+            };
+            const focus = { color: colors.focus, labelColor: colors.labelStrong, labelVisibility: "visible" as const, zIndex: 2 };
+            const dim = { color: colors.dim, label: null };
             if (highlighted.size) {
-              if (highlighted.has(node)) Object.assign(result, { color: HIGHLIGHT, labelVisibility: "visible", zIndex: 2 });
-              else Object.assign(result, { color: DIM_NODE, label: null });
+              if (highlighted.has(node)) Object.assign(result, focus, node === selected && { size: display.size * 1.5 });
+              else Object.assign(result, dim);
             } else if (focusSet) {
-              if (node === selected) Object.assign(result, { color: HIGHLIGHT, labelVisibility: "visible", zIndex: 2 });
-              else if (focusSet.has(node)) Object.assign(result, { labelVisibility: "visible", zIndex: 1 });
-              else Object.assign(result, { color: DIM_NODE, label: null });
+              if (node === selected) Object.assign(result, focus, { size: display.size * 1.5 });
+              else if (focusSet.has(node)) Object.assign(result, { labelColor: colors.labelStrong, labelVisibility: "visible", zIndex: 1 });
+              else Object.assign(result, dim);
             }
-            if (nodeState.isHovered) result.labelVisibility = "visible";
+            if (nodeState.isHovered) Object.assign(result, { labelVisibility: "visible", labelColor: colors.labelStrong });
             return result;
           },
           edgeReducer: (edge, _display) => {
-            const { selected } = state.current;
-            if (selected && graph.hasExtremity(edge, selected)) return { color: EDGE_ACTIVE, size: 1.4 };
-            return { color: EDGE, size: 0.6 };
+            const { selected, highlighted } = state.current;
+            const colors = theme.current;
+            if (selected && graph.hasExtremity(edge, selected)) return { color: colors.edgeActive, size: 1.4 };
+            if (selected || highlighted.size) return { color: colors.edge, size: 0.4 };
+            return { color: colors.edge, size: 0.6 };
           },
         });
         sigma.on("clickNode", ({ node }) => state.current.onSelect(node));
@@ -201,6 +260,22 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
   useEffect(() => {
     sigmaRef.current?.refresh({ skipIndexation: true });
   }, [selected, highlighted]);
+
+  // Repaint (never reload) when the system theme or a forced data-theme changes.
+  useEffect(() => {
+    const repaint = () => {
+      theme.current = currentTheme();
+      sigmaRef.current?.refresh();
+    };
+    const query = darkQuery();
+    query.addEventListener("change", repaint);
+    const observer = new MutationObserver(repaint);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => {
+      query.removeEventListener("change", repaint);
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <div className="graph" ref={container} role="img" aria-label="Map of your notes and the links between them">
