@@ -82,15 +82,23 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
 
   if (!path) return null;
 
+  const parts = path.split("/");
+  const name = parts.pop();
+
   return (
     <aside className="panel sheet" aria-label={`Note ${path}`}>
       <span className="grabber" aria-hidden="true" />
       <header className="panel-head">
         {renaming === null ? (
-          <h2 className="note-title" title={path}>
-            {path.split("/").pop()}
-            {path.includes("/") && <span className="note-folder">{path.split("/").slice(0, -1).join(" / ")}</span>}
-          </h2>
+          <div className="note-heading">
+            <nav className="crumbs" aria-label="Folder">
+              <Icon name="note" size={14} />
+              {parts.length === 0 ? <span>Top level</span> : parts.map((part, index) => <span key={index}>{part}</span>)}
+            </nav>
+            <h2 className="note-title" title={path}>
+              {name}
+            </h2>
+          </div>
         ) : (
           <form
             className="rename"
@@ -99,11 +107,18 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
               void rename();
             }}
           >
-            <input autoFocus value={renaming} onChange={(event) => setRenaming(event.target.value)} aria-label="New path" />
-            <button type="submit">Rename</button>
-            <button type="button" onClick={() => setRenaming(null)}>
-              Cancel
-            </button>
+            <label className="rename-label" htmlFor="rename-input">
+              Rename or move. Use / for folders.
+            </label>
+            <input id="rename-input" autoFocus value={renaming} onChange={(event) => setRenaming(event.target.value)} />
+            <div className="rename-actions">
+              <button type="button" onClick={() => setRenaming(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="primary">
+                Rename
+              </button>
+            </div>
           </form>
         )}
         <button className="icon" onClick={onClose} aria-label="Close note" title="Close">
@@ -116,9 +131,13 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
           Save
         </button>
         {note && renaming === null && <button onClick={() => setRenaming(note.path)}>Rename</button>}
-        {note && <button onClick={() => void trash()}>Move to trash</button>}
-        <span className="status" role="status">
-          {status ?? (note ? `Revision ${note.rev}, edited ${when(note.updatedAt)}` : "New note")}
+        {note && (
+          <button className="danger" onClick={() => void trash()}>
+            <Icon name="trash" size={16} /> Move to trash
+          </button>
+        )}
+        <span className="status" role="status" data-dirty={dirty || undefined}>
+          {status ?? (dirty ? "Unsaved changes" : note ? `Revision ${note.rev}, edited ${when(note.updatedAt)}` : "New note")}
         </span>
       </div>
 
@@ -126,32 +145,36 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
 
       {note && (
         <footer className="links">
-          <section>
-            <h3>Links to</h3>
+          <section aria-labelledby="links-out">
+            <h3 id="links-out">
+              Links to <span className="count">{note.outgoing.length}</span>
+            </h3>
             {note.outgoing.length === 0 && <p className="muted">None yet. Write [[Note name]] to link.</p>}
             <ul>
               {note.outgoing.map((link) => (
                 <li key={link.ref}>
                   {link.id ? (
-                    <button className="link" onClick={() => onOpen(link.id!)}>
+                    <button className="chip" onClick={() => onOpen(link.id!)} title={link.path ?? undefined}>
                       {link.path}
                     </button>
                   ) : (
-                    <button className="link missing" onClick={() => onOpenPath(link.ref)} title="No note with this name yet. Open to create it.">
-                      {link.ref}
+                    <button className="chip missing" onClick={() => onOpenPath(link.ref)} title="No note with this name yet. Open to create it.">
+                      <Icon name="plus" size={14} /> {link.ref}
                     </button>
                   )}
                 </li>
               ))}
             </ul>
           </section>
-          <section>
-            <h3>Linked from</h3>
+          <section aria-labelledby="links-in">
+            <h3 id="links-in">
+              Linked from <span className="count">{note.backlinks.length}</span>
+            </h3>
             {note.backlinks.length === 0 && <p className="muted">No notes link here.</p>}
             <ul>
               {note.backlinks.map((back) => (
                 <li key={back.id}>
-                  <button className="link" onClick={() => onOpen(back.id)}>
+                  <button className="chip" onClick={() => onOpen(back.id)} title={back.path}>
                     {back.path}
                   </button>
                 </li>
