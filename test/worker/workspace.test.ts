@@ -9,8 +9,8 @@ const workspace = () => env.WORKSPACE.getByName(`test-${++counter}-${crypto.rand
 
 async function save(ws: ReturnType<typeof workspace>, path: string, body = "", expectedRev?: number) {
   const result = await ws.saveNote({ path, body, expectedRev, actor: me });
-  // Tests that expect "not_found" compare the whole result and never read `note`.
-  return result as Exclude<typeof result, { status: "not_found" }>;
+  // Tests that expect "not_found" or "protected" compare the whole result and never read `note`.
+  return result as Exclude<typeof result, { status: "not_found" } | { status: "protected" }>;
 }
 
 describe("saving and reading notes", () => {
