@@ -44,7 +44,7 @@ describe("who may call the API", () => {
   it("describes the signed-in user, workspaces and MCP address", async () => {
     const { api, workspaceId } = await signIn();
     const me = (await (await api("/api/me")).json()) as Record<string, unknown>;
-    expect(me).toMatchObject({ workspaceId, mcpUrl: "https://mcp.test", workspaces: [{ id: workspaceId, role: "owner" }] });
+    expect(me).toMatchObject({ workspaceId, mcpUrl: "https://mcp.test/mcp", workspaces: [{ id: workspaceId, role: "owner" }] });
   });
 });
 

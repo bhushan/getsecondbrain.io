@@ -122,7 +122,7 @@ Browser (React)          AI apps (Claude, ChatGPT, Cursor, Gemini CLI)
   permission (read, or read and write), and the issued token carries user id, workspace id and
   scopes. A Connected apps page lists and revokes them.
 - **Hostnames**: `app.getsecondbrain.io` for the web app and API, and `mcp.getsecondbrain.io` for
-  MCP (founder's choice: served at the root, no `/mcp` path), both routed to the same Worker. On
+  MCP (served at `/mcp`, the path MCP apps expect; founder's call 2026-11-22, replacing the earlier root-only choice), both routed to the same Worker. On
   the MCP host, the OAuth endpoints keep their own paths (`/authorize`, `/token`, `/.well-known/`),
   and a plain browser visit to the root shows a short how-to-connect page. The apex is left for a
   landing page later.

@@ -2,7 +2,10 @@ import { env, exports } from "cloudflare:workers";
 import { createSession, listWorkspaces, upsertGoogleUser } from "../../src/worker/control/accounts";
 
 export const APP = "https://app.test";
-export const MCP = "https://mcp.test";
+/** The MCP endpoint and token audience. */
+export const MCP = "https://mcp.test/mcp";
+/** The MCP host without the endpoint path. */
+export const MCP_ORIGIN = "https://mcp.test";
 
 /** A signed-in user with a fresh account and workspace. */
 export async function signIn(email = `user-${crypto.randomUUID()}@example.com`) {

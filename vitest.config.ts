@@ -13,7 +13,7 @@ export default defineConfig(async () => {
               miniflare: {
                 bindings: {
                   APP_ORIGIN: "https://app.test",
-                  MCP_RESOURCE: "https://mcp.test",
+                  MCP_RESOURCE: "https://mcp.test/mcp",
                   SITE_ORIGIN: "https://www.test",
                   GOOGLE_CLIENT_ID: "google-client-id",
                   GOOGLE_CLIENT_SECRET: "google-client-secret",

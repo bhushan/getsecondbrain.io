@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { connectGuides, MEMORY_RULE } from "../../src/web/connectGuides";
 
-const URL = "https://mcp.example.test";
+const URL = "https://mcp.example.test/mcp";
 const guides = connectGuides(URL);
 const byId = (id: string) => guides.find((guide) => guide.id === id)!;
 const snippets = (id: string) => byId(id).steps.flatMap((step) => (step.code ? [step.code] : []));
@@ -18,13 +18,17 @@ describe("connect guides", () => {
     }
   });
 
-  it("uses the exact address with no path in every snippet", () => {
+  it("uses the exact address, with no trailing slash, in every snippet", () => {
     for (const guide of guides) {
       for (const code of guide.steps.flatMap((step) => (step.code ? [step.code] : []))) {
         expect(code).toContain(URL);
         expect(code).not.toContain(`${URL}/`);
       }
     }
+  });
+
+  it("never tells people to leave out the /mcp path", () => {
+    for (const guide of guides) for (const step of [...guide.steps, ...guide.memory]) expect(step.text).not.toMatch(/no \/mcp path/i);
   });
 
   it("adds Claude Code for every project over HTTP", () => {

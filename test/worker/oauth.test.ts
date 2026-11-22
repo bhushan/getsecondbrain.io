@@ -1,7 +1,7 @@
 import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { createWorkspace } from "../../src/worker/control/accounts";
-import { APP, MCP, signIn } from "./helpers";
+import { APP, MCP, MCP_ORIGIN, signIn } from "./helpers";
 
 const REDIRECT = "https://client.example/callback";
 const fetchApp = (path: string, init?: RequestInit) => exports.default.fetch(`${APP}${path}`, { redirect: "manual", ...init });
@@ -86,8 +86,8 @@ async function connect(options: { write?: boolean; workspace?: string; resource?
   return { who, html, approved, token };
 }
 
-function mcp(token: string | null, method: string, params: unknown = {}) {
-  return exports.default.fetch(`${MCP}/`, {
+function mcp(token: string | null, method: string, params: unknown = {}, url = MCP) {
+  return exports.default.fetch(url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -100,8 +100,8 @@ function mcp(token: string | null, method: string, params: unknown = {}) {
   });
 }
 
-async function rpc(token: string, method: string, params: unknown = {}): Promise<any> {
-  const response = await mcp(token, method, params);
+async function rpc(token: string, method: string, params: unknown = {}, url = MCP): Promise<any> {
+  const response = await mcp(token, method, params, url);
   const text = await response.text();
   if (response.status !== 200) console.log("RPC", response.status, text.slice(0, 400));
   const body = text.trimStart().startsWith("{") ? text : (text.split("\n").find((l) => l.startsWith("data:")) ?? "").slice(5);
@@ -115,12 +115,12 @@ describe("discovery", () => {
   it("challenges an MCP request without a token and points at the resource metadata", async () => {
     const response = await mcp(null, "tools/list");
     expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toContain("resource_metadata=");
+    expect(response.headers.get("www-authenticate")).toContain(`resource_metadata="${MCP_ORIGIN}/.well-known/oauth-protected-resource/mcp"`);
     expect((await mcp("not-a-real-token", "tools/list")).status).toBe(401);
   });
 
   it("publishes resource metadata on the MCP host and server metadata on the app host", async () => {
-    const resource = (await (await exports.default.fetch(`${MCP}/.well-known/oauth-protected-resource`)).json()) as Record<string, unknown>;
+    const resource = (await (await exports.default.fetch(`${MCP_ORIGIN}/.well-known/oauth-protected-resource/mcp`)).json()) as Record<string, unknown>;
     expect(resource).toMatchObject({ resource: MCP, authorization_servers: [APP] });
     const server = (await (await fetchApp("/.well-known/oauth-authorization-server")).json()) as Record<string, unknown>;
     expect(server).toMatchObject({
@@ -133,9 +133,11 @@ describe("discovery", () => {
   });
 
   it("sends a browser that opens the MCP address to the connect page", async () => {
-    const response = await exports.default.fetch(`${MCP}/`, { headers: { accept: "text/html" }, redirect: "manual" });
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe(`${APP}/connect`);
+    for (const url of [MCP, `${MCP_ORIGIN}/`]) {
+      const response = await exports.default.fetch(url, { headers: { accept: "text/html" }, redirect: "manual" });
+      expect(response.status, url).toBe(302);
+      expect(response.headers.get("location"), url).toBe(`${APP}/connect`);
+    }
   });
 });
 
@@ -208,8 +210,8 @@ describe("connecting an app", () => {
     expect((await callTool(bob.token!, "get_note", { path: "Alice private" })).isError).toBe(true);
   });
 
-  it("accepts the resource with or without a trailing slash, or left out", async () => {
-    for (const resource of [MCP, `${MCP}/`, null]) {
+  it("accepts the resource named exactly, or left out", async () => {
+    for (const resource of [MCP, null]) {
       const { token } = await connect({ resource });
       expect(token, String(resource)).toBeTruthy();
       expect((await mcp(token, "tools/list")).status, String(resource)).toBe(200);
@@ -232,7 +234,7 @@ describe("connecting an app", () => {
 
   it("refuses an MCP request whose Host header names another site", async () => {
     const { token } = await connect();
-    const response = await exports.default.fetch(`${MCP}/`, {
+    const response = await exports.default.fetch(MCP, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json, text/event-stream", host: "evil.test", authorization: `Bearer ${token}` },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
@@ -243,5 +245,13 @@ describe("connecting an app", () => {
   it("refuses a token sent to the app host's API instead of a session", async () => {
     const { token } = await connect();
     expect((await fetchApp("/api/stats", { headers: { authorization: `Bearer ${token}` } })).status).toBe(401);
+  });
+});
+
+describe("the MCP endpoint path", () => {
+  it("serves MCP only at /mcp, not at the bare host", async () => {
+    const { token } = await connect();
+    expect((await mcp(token, "tools/list", {}, `${MCP_ORIGIN}/`)).status).toBe(404);
+    expect((await mcp(token, "tools/list")).status).toBe(200);
   });
 });

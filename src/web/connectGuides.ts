@@ -157,7 +157,7 @@ export function connectGuides(url: string): Guide[] {
       name: "Any other app",
       where: "anything that supports remote MCP",
       steps: [
-        { text: "Add a remote MCP server (it may be called Streamable HTTP or HTTP, not SSE) with this address. There is no /mcp path.", code: url, codeLabel: "Server URL" },
+        { text: "Add a remote MCP server (it may be called Streamable HTTP or HTTP, not SSE) with this address, including the /mcp at the end.", code: url, codeLabel: "Server URL" },
         { text: "Choose OAuth for authentication and leave the client ID and secret empty: the app registers itself. API keys are not supported." },
         { text: "When the app opens Second Brain, sign in, choose a workspace and Connect." },
       ],

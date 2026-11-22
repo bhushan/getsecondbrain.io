@@ -22,7 +22,7 @@
   // Local development: two loopback hostnames stand in for the app and MCP hosts.
   "vars": {
     "APP_ORIGIN": "http://localhost:8787",
-    "MCP_RESOURCE": "http://127.0.0.1:8787",
+    "MCP_RESOURCE": "http://127.0.0.1:8787/mcp",
     "SITE_ORIGIN": "http://www.localhost:8787"
   },
   "d1_databases": [
@@ -41,7 +41,7 @@
       ],
       "vars": {
         "APP_ORIGIN": "https://app.getsecondbrain.io",
-        "MCP_RESOURCE": "https://mcp.getsecondbrain.io",
+        "MCP_RESOURCE": "https://mcp.getsecondbrain.io/mcp",
         "SITE_ORIGIN": "https://www.getsecondbrain.io"
       },
       "durable_objects": {

@@ -5,9 +5,6 @@ import type { Principal } from "../auth/principal";
 import { hosts } from "../config";
 import { SERVER_INSTRUCTIONS, TOOLS, runTool } from "./tools";
 
-/** The MCP endpoint is the root of the MCP host. */
-export const MCP_ROUTE = "/";
-
 /** Built once per isolate: a stateless server whose tools read the verified caller from the auth context. */
 function createServer(): McpServer {
   const server = new McpServer(
@@ -35,10 +32,10 @@ const handlers = new Map<string, ReturnType<typeof createMcpHandler>>();
 
 /** Serves one MCP request for a caller the resource server already verified. */
 export function handleMcp(request: Request, env: Env, ctx: ExecutionContext, principal: Principal): Promise<Response> {
-  const { mcpHost } = hosts(env);
+  const { mcpHost, mcpPath } = hosts(env);
   let handler = handlers.get(mcpHost);
   if (!handler) {
-    handler = createMcpHandler(createServer, { route: MCP_ROUTE, allowedHostnames: [mcpHost.split(":")[0]!] });
+    handler = createMcpHandler(createServer, { route: mcpPath, allowedHostnames: [mcpHost.split(":")[0]!] });
     handlers.set(mcpHost, handler);
   }
   // The verified caller travels as `props`, the way the handler reads it into the auth context.

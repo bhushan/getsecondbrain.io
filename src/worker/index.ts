@@ -64,13 +64,14 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
 
 async function handleMcpHost(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
-  // Someone opening the MCP address in a browser gets the how-to-connect page.
+  const { appOrigin, mcpPath } = hosts(env);
+  // Someone opening the MCP address (or the bare host) in a browser gets the how-to-connect page.
   const wantsPage =
     request.method === "GET" &&
-    url.pathname === "/" &&
+    (url.pathname === "/" || url.pathname === mcpPath) &&
     !request.headers.has("authorization") &&
     (request.headers.get("accept") ?? "").includes("text/html");
-  if (wantsPage) return Response.redirect(`${hosts(env).appOrigin}/connect`, 302);
+  if (wantsPage) return Response.redirect(`${appOrigin}/connect`, 302);
   return servers(env).resource.fetch(request, env, ctx);
 }
 
