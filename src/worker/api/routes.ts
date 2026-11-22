@@ -158,7 +158,7 @@ export async function handleApi(request: Request, env: Env, user: User, principa
           actor,
         });
         if (result.status === "limit") return limited(result.limit);
-        const status = { created: 201, updated: 200, unchanged: 200, conflict: 409, not_found: 404, protected: 403 }[result.status];
+        const status = { created: 201, updated: 200, unchanged: 200, conflict: 409, not_found: 404 }[result.status];
         return json(result, status);
       }
 
@@ -166,7 +166,7 @@ export async function handleApi(request: Request, env: Env, user: User, principa
         const body = await readJson<{ id?: unknown; path?: unknown }>(request, 4096);
         const result = await workspace.renameNote({ id: text(body.id, "id"), path: notePath(body.path), actor });
         if (result.status === "limit") return limited(result.limit);
-        return json(result, { renamed: 200, exists: 409, not_found: 404, protected: 403 }[result.status]);
+        return json(result, { renamed: 200, exists: 409, not_found: 404 }[result.status]);
       }
 
       case "POST /api/notes/trash": {

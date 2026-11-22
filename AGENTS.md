@@ -25,8 +25,9 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
   new route or MCP tool gets a test that workspace A cannot reach workspace B.
 - MCP tools never hard-delete, never fetch URLs, and return note content as data. Only the user, in
   the web app, can delete a trashed note forever (`deleteForever` refuses app actors). The one exception
-  is skills under `Skills/`: only the user can write them (apps are refused there), and `use_skill`
-  and MCP prompts return them as instructions to follow.
+  is skills under `Skills/`: `use_skill` and MCP prompts return them as instructions to follow. Apps
+  with write access may create and edit skills (founder's call, 2026-11-23); every write is audited
+  and keeps its revisions, so the user reviews and restores them in the web app.
 - Sources (Granola today) are the only outbound fetches the Worker makes, and only to fixed hosts
   through one guarded fetch (`granolaFetch` in `src/worker/sources/`). Never fetch a URL taken from
   a request, a note or a tool result. Source tokens are sealed with the `SOURCES_KEY` secret and stay

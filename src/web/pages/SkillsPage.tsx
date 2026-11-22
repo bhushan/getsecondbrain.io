@@ -55,7 +55,7 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
     <main className="page page-skills">
       <PageHeader title="Skills">
         Write a set of instructions once, and every AI app you connect can use it. Apps pick the right skill when a task fits, or
-        you ask for one by name. Only you can add or change skills; apps can only use them.
+        you ask for one by name. Apps you allow to write can add and update skills too.
       </PageHeader>
 
       {!composer && skills !== null && skills.length > 0 && (
@@ -149,7 +149,7 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
           </li>
         </ul>
         <p className="muted pg-small">
-          Skills are notes in the Skills folder, so they also appear in your network and keep every revision. Importing a vault with a Skills
+          Skills are notes in the Skills folder, so they also appear in your network and keep every revision. Apps you allow to write can add and update skills, and you can review or restore any change. Importing a vault with a Skills
           folder of SKILL.md files adds them all at once.
         </p>
       </section>

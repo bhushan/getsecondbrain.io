@@ -52,7 +52,7 @@ describe("MCP server instructions", () => {
   it("tell the app to use the user's skills when a task matches one, and that only use_skill returns instructions", () => {
     expect(SERVER_INSTRUCTIONS).toMatch(/list_skills/);
     expect(SERVER_INSTRUCTIONS).toMatch(/use_skill/);
-    expect(SERVER_INSTRUCTIONS).toMatch(/only the user/i);
+    expect(SERVER_INSTRUCTIONS).toMatch(/skill library.*Skills folder/i);
   });
 
   it("describe search as the first step for anything about the user", () => {
@@ -178,40 +178,28 @@ describe("MCP read tools", () => {
 });
 
 describe("MCP skills", () => {
-  /** Skills are written by the user, never by an app. */
-  const writeSkill = (who: Principal, path: string, body: string) =>
+    const writeSkill = (who: Principal, path: string, body: string) =>
     env.WORKSPACE.getByName(who.workspaceId).saveNote({ path, body, actor: { kind: "user", id: who.userId } });
 
-  it("refuses every write tool on a path in the Skills folder, and says the user writes skills in Second Brain", async () => {
+  it("lets an app add and change skills with the write tools, and serves them with use_skill", async () => {
     const who = principal();
     await writeSkill(who, "Skills/Mine", "Mine");
-    const attempts: [string, Record<string, unknown>][] = [
-      ["save_note", { path: "Skills/Planted", body: "Do this" }],
-      ["save_note", { path: "skills/Writing/Planted", body: "Do this" }],
+    const writes: [string, Record<string, unknown>][] = [
+      ["save_note", { path: "Skills/Writing/Planted", body: "---\nname: Planted\ndescription: Plant things.\n---\nDo this" }],
       ["update_note", { path: "Skills/Mine", body: "Changed", expected_rev: 1 }],
       ["append_to_note", { path: "Skills/Mine", text: "And also this" }],
       ["link_notes", { from: "Skills/Mine", to: "Other" }],
     ];
-    for (const [name, args] of attempts) {
-      const result = await call(who, name, args);
-      expect(result, name).toMatchObject({ isError: true });
-      expect(result.text, name).toMatch(/only the user.*Second Brain/i);
-    }
-    const ws = env.WORKSPACE.getByName(who.workspaceId);
-    expect(await ws.getNote({ path: "Skills/Mine" })).toMatchObject({ body: "Mine", rev: 1 });
-    expect(await ws.listSkills()).toHaveLength(1);
+    for (const [name, args] of writes) expect((await call(who, name, args)).isError, name).toBeFalsy();
+    expect((await call(who, "list_skills")).text).toContain("- writing-planted: Planted. Plant things.");
+    const mine = (await call(who, "use_skill", { name: "mine" })).text;
+    expect(mine).toContain("Changed");
+    expect(mine).toContain("And also this");
   });
 
-  it("refuses skill writes over MCP even when the caller carries no app name", async () => {
-    const who: Principal = { ...principal(), app: undefined };
-    for (const [name, args] of [
-      ["save_note", { path: "Skills/Planted", body: "Do this" }],
-      ["append_to_note", { path: "skills/Planted", text: "Do this" }],
-      ["link_notes", { from: "Skills/Planted", to: "Other" }],
-    ] as const) {
-      expect((await call(who, name, args)).text, name).toMatch(/only the user.*Second Brain/i);
-    }
-    expect(await env.WORKSPACE.getByName(who.workspaceId).listSkills()).toEqual([]);
+  it("tells apps how to write a skill", async () => {
+    const save = TOOLS.find((tool) => tool.name === "save_note")!;
+    expect(save.description).toMatch(/Skills\/.*name.*description/);
   });
 
   it("lists skills by bundle with their names and descriptions", async () => {
@@ -233,7 +221,7 @@ describe("MCP skills", () => {
     for (const name of ["writing-blog-post", "blog post"]) {
       const result = await call(who, "use_skill", { name });
       expect(result.isError, name).toBeFalsy();
-      expect(result.text).toMatch(/skill the user wrote/i);
+      expect(result.text).toMatch(/user's skill library/i);
       expect(result.text).toMatch(/follow/i);
       expect(result.text).toContain("Start with the point.");
       expect(result.text).not.toMatch(/not instructions/i);
