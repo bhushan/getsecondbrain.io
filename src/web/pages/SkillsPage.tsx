@@ -37,6 +37,7 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
         bundle: skill.bundle ?? "",
         description: parsed.description,
         instructions: parsed.instructions,
+        extra: parsed.extra,
         saved: { id: note.id, path: note.path, rev: note.rev },
       });
     } catch {
@@ -112,7 +113,7 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
         </div>
       )}
 
-      {[...groups].map(([bundle, items]) => (
+      {[...groups].sort(([a], [b]) => Number(a !== "") - Number(b !== "")).map(([bundle, items]) => (
         <section className="skill-group" key={bundle || "-"} aria-label={bundle || "Skills without a bundle"}>
           {bundle && (
             <h2>
@@ -125,7 +126,7 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
                 <button type="button" className="skill-card" onClick={() => void edit(skill)} aria-label={`Edit ${skill.name}`}>
                   <strong>{skill.name}</strong>
                   <p>{skill.description || "No description yet. Add one so apps know when to use it."}</p>
-                  <code className="skill-command">/{skill.slug}</code>
+                  <code className="skill-command" title="The name apps use for this skill">{skill.slug}</code>
                 </button>
               </li>
             ))}
@@ -143,7 +144,8 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
             <strong>When you ask.</strong> Say "use my blog post skill" in any connected app.
           </li>
           <li>
-            <strong>As a slash command.</strong> Apps that list MCP prompts, such as Claude Code, show your skills in their / menu.
+            <strong>From the app's menu.</strong> Apps that support MCP prompts, such as Claude Code, can also offer your skills as slash
+            commands under these names.
           </li>
         </ul>
         <p className="muted pg-small">

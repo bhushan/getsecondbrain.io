@@ -22,6 +22,8 @@ export interface SkillFields {
   name: string;
   description: string;
   instructions: string;
+  /** Other frontmatter lines (tags, license...), kept as written so an edit never drops them. */
+  extra?: string;
 }
 
 /** True for notes inside the Skills folder, in any letter case (paths compare case-insensitively). */
@@ -46,13 +48,14 @@ export function parseSkill(path: string, body: string): Skill {
 
 /** Reads pasted text (a SKILL.md, or plain instructions) into the fields of the skill form. */
 export function parseSkillText(text: string): SkillFields {
-  const { fields, instructions } = splitSkill(text);
-  return { name: fields.name ?? "", description: fields.description ?? "", instructions };
+  const { fields, extra, instructions } = splitSkill(text);
+  return { name: fields.name ?? "", description: fields.description ?? "", instructions, extra };
 }
 
 /** Writes a skill as a note body that `parseSkill` reads back. */
 export function composeSkill(skill: SkillFields): string {
-  return `---\nname: ${yamlValue(skill.name)}\ndescription: ${yamlValue(skill.description)}\n---\n\n${skill.instructions.trim()}\n`;
+  const extra = skill.extra?.trim() ? `${skill.extra.trimEnd()}\n` : "";
+  return `---\nname: ${yamlValue(skill.name)}\ndescription: ${yamlValue(skill.description)}\n${extra}---\n\n${skill.instructions.trim()}\n`;
 }
 
 /** Where a skill from the form is saved: `Skills/<bundle>/<name>`, or null if the name is unusable. */
@@ -77,26 +80,39 @@ export function assignSlugs<T extends Skill>(skills: T[]): (T & { slug: string }
 
 // Internals
 
-function splitSkill(body: string): { fields: { name?: string; description?: string }; instructions: string } {
+interface Split {
+  fields: { name?: string; description?: string };
+  extra: string;
+  instructions: string;
+}
+
+function splitSkill(body: string): Split {
   const lines = body.replace(/\r\n/g, "\n").split("\n");
   if (lines[0]?.trimEnd() === "---") {
     const end = lines.findIndex((line, i) => i > 0 && line.trimEnd() === "---");
-    if (end > 0) return { fields: readFields(lines.slice(1, end)), instructions: lines.slice(end + 1).join("\n").trim() };
+    if (end > 0) return { ...readFields(lines.slice(1, end)), instructions: lines.slice(end + 1).join("\n").trim() };
   }
-  return { fields: {}, instructions: body.trim() };
+  return { fields: {}, extra: "", instructions: body.trim() };
 }
 
-/** Reads top-level `name` and `description`, joining indented continuation lines and block scalars. */
-function readFields(lines: string[]): { name?: string; description?: string } {
+/**
+ * Reads top-level `name` and `description`, joining indented continuation lines and block scalars.
+ * Every other line is returned untouched as `extra`.
+ */
+function readFields(lines: string[]): Omit<Split, "instructions"> {
   const fields: Record<string, string> = {};
+  const extra: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const match = /^(name|description):\s*(.*)$/i.exec(lines[i]!);
-    if (!match) continue;
+    if (!match) {
+      extra.push(lines[i]!);
+      continue;
+    }
     const parts = /^[>|][+-]?$/.test(match[2]!.trim()) ? [] : [match[2]!];
     while (i + 1 < lines.length && /^\s+\S/.test(lines[i + 1]!)) parts.push(lines[++i]!);
     fields[match[1]!.toLowerCase()] = unquote(parts.map((part) => part.trim()).join(" ").trim());
   }
-  return fields;
+  return { fields, extra: extra.join("\n").trim() };
 }
 
 function unquote(value: string): string {

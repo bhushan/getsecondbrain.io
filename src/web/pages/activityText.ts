@@ -7,11 +7,14 @@ const ACTIONS: Record<string, string> = {
   relink: "updated links in",
   trash: "trashed",
   restore: "restored",
+  "read:list_skills": "looked through your skills",
+  "read:use_skill": "used one of your skills",
 };
 
 export function describeAction(action: string): string {
+  if (ACTIONS[action]) return ACTIONS[action];
   if (action.startsWith("read:")) return `used ${action.slice(5).replace(/_/g, " ")}`;
-  return ACTIONS[action] ?? action;
+  return action;
 }
 
 const DAY = 24 * 60 * 60 * 1000;

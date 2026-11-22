@@ -2,6 +2,7 @@ import { z } from "zod";
 import { actorOf, type Principal, type Scope } from "../auth/principal";
 import { parsePath } from "../lib/paths";
 import { scanMarkdown } from "../lib/markdown";
+import { isSkillPath } from "../lib/skills";
 import type { NoteMeta, SkillDetail } from "../workspace/types";
 
 /**
@@ -238,7 +239,8 @@ export const TOOLS: Tool<any>[] = [
       const skills = await workspace.listSkills();
       if (!skills.length) return { text: "No skills yet. The user adds them on the Skills page in Second Brain, or as notes in the Skills folder." };
       const groups = Map.groupBy(skills, (skill) => skill.bundle ?? "");
-      const sections = [...groups].map(([bundle, items]) =>
+      // Skills without a bundle come first; the rest keep their path order.
+      const sections = [...groups].sort(([a], [b]) => Number(a !== "") - Number(b !== "")).map(([bundle, items]) =>
         [...(bundle ? [bundle] : []), ...items.map((skill) => `- ${skill.slug}: ${skill.name}. ${skill.description}`.trimEnd())].join("\n"),
       );
       return { text: ["Skills the user wrote. Call use_skill with a name to get its instructions.", ...sections].join("\n\n") };
@@ -298,6 +300,19 @@ async function append({ workspace, principal }: Context, notePath: string, addit
   return error("The note kept changing while saving. Try again.");
 }
 
+/** True when a write tool's arguments name a note in the Skills folder. */
+function writesASkill(args: Record<string, unknown>): boolean {
+  return [args.path, args.from].some((value) => typeof value === "string" && isSkillPath(safePath(value)));
+}
+
+const safePath = (value: string) => {
+  try {
+    return parsePath(value).path;
+  } catch {
+    return value;
+  }
+};
+
 type Gate = { workspace: Context["workspace"] } | { refused: ToolResult };
 
 /**
@@ -324,6 +339,9 @@ export async function runTool(env: Env, principal: Principal, name: string, args
   const { workspace } = gate;
   const parsed = z.object(tool.input).safeParse(args ?? {});
   if (!parsed.success) return error(`Invalid input: ${parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; ")}`);
+  // Every MCP caller is an app, whatever its name, so no write tool may touch a skill. The workspace
+  // refuses app writes there too; this check does not depend on how the caller is labelled.
+  if (tool.scope === "write" && writesASkill(parsed.data)) return protectedSkill();
   try {
     return await tool.run({ principal, workspace }, parsed.data);
   } catch (cause) {

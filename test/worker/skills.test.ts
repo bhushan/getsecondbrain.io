@@ -62,11 +62,19 @@ describe("parseSkillText", () => {
       name: "Blog post",
       description: "Write a blog post.",
       instructions: "Start with the point.",
+      extra: "",
     });
   });
 
   it("keeps plain pasted text as the instructions", () => {
-    expect(parseSkillText("Just do the thing.")).toEqual({ name: "", description: "", instructions: "Just do the thing." });
+    expect(parseSkillText("Just do the thing.")).toEqual({ name: "", description: "", instructions: "Just do the thing.", extra: "" });
+  });
+
+  it("keeps every other frontmatter field, so editing a skill never drops its tags or license", () => {
+    const text = "---\nname: X\ndescription: Y\n  more\nlicense: MIT\ntags:\n  - writing\n---\nBody";
+    const fields = parseSkillText(text);
+    expect(fields.extra).toBe("license: MIT\ntags:\n  - writing");
+    expect(composeSkill(fields)).toBe('---\nname: "X"\ndescription: "Y more"\nlicense: MIT\ntags:\n  - writing\n---\n\nBody\n');
   });
 });
 

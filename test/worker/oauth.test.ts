@@ -45,9 +45,11 @@ function authorizeUrl(clientId: string, challenge: string, resource: string | nu
 }
 
 /** Runs the whole connect flow for a signed-in user and returns an access token. */
-async function connect(options: { write?: boolean; workspace?: string; resource?: string | null; who?: Awaited<ReturnType<typeof signIn>> } = {}) {
+async function connect(
+  options: { write?: boolean; workspace?: string; resource?: string | null; who?: Awaited<ReturnType<typeof signIn>>; clientName?: string } = {},
+) {
   const who = options.who ?? (await signIn());
-  const clientId = await registerClient();
+  const clientId = await registerClient(options.clientName);
   const { verifier, challenge } = await pkce();
   const page = await fetchApp(authorizeUrl(clientId, challenge, options.resource === undefined ? MCP : options.resource), {
     headers: { cookie: who.cookie },
@@ -282,6 +284,14 @@ describe("skills as MCP prompts", () => {
     expect(result.messages[0].content.text).toContain("Start with the point.");
     expect(result.messages[0].content.text).toContain("about wombats");
     expect((await rpc(token!, "prompts/get", { name: "nope" })).error).toBeDefined();
+  });
+
+  it("treats a client that registered with an empty name as an app, so it cannot write skills", async () => {
+    const { token, who } = await connect({ clientName: "" });
+    const result = await callTool(token!, "save_note", { path: "Skills/Planted", body: "Do this" });
+    expect(result.isError).toBe(true);
+    await callTool(token!, "save_note", { path: "Plain", body: "x" });
+    expect((await env.WORKSPACE.getByName(who.workspaceId).listAudit(1))[0]!.actor.kind).toBe("app");
   });
 
   it("only offers the connected workspace's skills", async () => {

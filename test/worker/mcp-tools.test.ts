@@ -202,6 +202,18 @@ describe("MCP skills", () => {
     expect(await ws.listSkills()).toHaveLength(1);
   });
 
+  it("refuses skill writes over MCP even when the caller carries no app name", async () => {
+    const who: Principal = { ...principal(), app: undefined };
+    for (const [name, args] of [
+      ["save_note", { path: "Skills/Planted", body: "Do this" }],
+      ["append_to_note", { path: "skills/Planted", text: "Do this" }],
+      ["link_notes", { from: "Skills/Planted", to: "Other" }],
+    ] as const) {
+      expect((await call(who, name, args)).text, name).toMatch(/only the user.*Second Brain/i);
+    }
+    expect(await env.WORKSPACE.getByName(who.workspaceId).listSkills()).toEqual([]);
+  });
+
   it("lists skills by bundle with their names and descriptions", async () => {
     const who = principal();
     await writeSkill(who, "Skills/Code review", "---\nname: Code review\ndescription: Review a diff for bugs.\n---\nSteps");

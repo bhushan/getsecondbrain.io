@@ -11,6 +11,11 @@ describe("describeAction", () => {
     expect(describeAction("read:search_notes")).toBe("used search notes");
   });
 
+  it("says plainly when an app looked through or used the user's skills", () => {
+    expect(describeAction("read:list_skills")).toBe("looked through your skills");
+    expect(describeAction("read:use_skill")).toBe("used one of your skills");
+  });
+
   it("shows an unknown action as it is", () => {
     expect(describeAction("archive")).toBe("archive");
   });

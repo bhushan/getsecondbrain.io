@@ -7,6 +7,8 @@ export interface SkillDraft {
   bundle: string;
   description: string;
   instructions: string;
+  /** Frontmatter fields the form does not show, kept as written. */
+  extra?: string;
   /** Set when editing a saved skill. */
   saved?: { id: string; path: string; rev: number };
 }
@@ -58,6 +60,7 @@ export function SkillComposer({
       name: pasted.name || current.name,
       description: pasted.description || current.description,
       instructions: pasted.instructions,
+      extra: pasted.extra,
     }));
     setPasting(false);
   };
