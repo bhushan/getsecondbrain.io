@@ -5,6 +5,7 @@ import FA2Layout from "graphology-layout-forceatlas2/worker";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import Sigma from "sigma";
 import { api, type GraphData } from "./api";
+import { framingBox, showAllLabels } from "./mapFraming";
 
 /** Map colours for one theme. Sigma draws on WebGL, so these are values rather than CSS variables. */
 interface MapTheme {
@@ -111,7 +112,8 @@ function buildGraph(data: GraphData): { graph: Graph; missing: number } {
     }
     index++;
   });
-  graph.forEachNode((node) => graph.setNodeAttribute(node, "size", 2.5 + Math.sqrt(graph.degree(node)) * 1.7));
+  const labelled = showAllLabels(graph.order);
+  graph.forEachNode((node) => graph.mergeNodeAttributes(node, { size: 2.5 + Math.sqrt(graph.degree(node)) * 1.7, forceLabel: labelled }));
   if (graph.size > 0) {
     louvain.assign(graph, { nodeCommunityAttribute: "community" });
   }
@@ -136,6 +138,13 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
     layoutRef.current = null;
   };
 
+  /** Keeps a lone note, or a tight cluster, at a readable size instead of filling the screen. */
+  const frame = (sigma: Sigma, graph: Graph) => {
+    const points: { x: number; y: number }[] = [];
+    graph.forEachNode((_, attrs) => points.push({ x: attrs.x, y: attrs.y }));
+    sigma.setCustomBBox(framingBox(points));
+  };
+
   const savePositions = (graph: Graph, ids: string[]) => {
     const positions: number[] = [];
     for (const id of ids) positions.push(graph.getNodeAttribute(id, "x"), graph.getNodeAttribute(id, "y"));
@@ -145,6 +154,8 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
   const runLayout = (graph: Graph, ids: string[]) => {
     stopLayout();
     const settings = { ...inferSettings(graph), barnesHutOptimize: graph.order > 1500, slowDown: 4 };
+    // While the notes spread out, the view follows them; the frame is set again when the layout stops.
+    sigmaRef.current?.setCustomBBox(null);
     const layout = new FA2Layout(graph, { settings });
     layoutRef.current = layout;
     layout.start();
@@ -153,6 +164,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
     timerRef.current = window.setTimeout(() => {
       if (layoutRef.current !== layout) return;
       stopLayout();
+      if (sigmaRef.current) frame(sigmaRef.current, graph);
       state.current.onStats({ nodes: graph.order, edges: graph.size, laying: false });
       savePositions(graph, ids);
     }, duration);
@@ -237,6 +249,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
         });
         sigma.on("clickNode", ({ node }) => state.current.onSelect(node));
         sigma.on("clickStage", () => state.current.onSelect(null));
+        frame(sigma, graph);
         if (camera) sigma.getCamera().setState(camera);
         sigmaRef.current = sigma;
         state.current.onStats({ nodes: graph.order, edges: graph.size, laying: false });
