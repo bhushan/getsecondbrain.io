@@ -23,6 +23,11 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
   the web app, can delete a trashed note forever (`deleteForever` refuses app actors). The one exception
   is skills under `Skills/`: only the user can write them (apps are refused there), and `use_skill`
   and MCP prompts return them as instructions to follow.
+- Sources (Granola today) are the only outbound fetches the Worker makes, and only to fixed hosts
+  through one guarded fetch (`granolaFetch` in `src/worker/sources/`). Never fetch a URL taken from
+  a request, a note or a tool result. Source tokens are sealed with the `SOURCES_KEY` secret and stay
+  inside the workspace object; the API never returns them. Synced notes are never deleted by sync,
+  and a note the user edited or trashed is never rewritten.
 - D1 migrations are hand-written SQL in `migrations/`. Durable Object schema changes go through the
   version in `src/worker/workspace/`.
 - Persist plain JSON or typed arrays across boundaries, never class instances.
