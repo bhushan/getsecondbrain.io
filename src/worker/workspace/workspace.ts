@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { ulid } from "../lib/ids";
 import { rewriteLinks, scanMarkdown } from "../lib/markdown";
 import { type NotePath, parsePath } from "../lib/paths";
-import { assignSlugs, isSkillPath, parseSkill, SKILLS_FOLDER } from "../lib/skills";
+import { assignSlugs, parseSkill, SKILLS_FOLDER } from "../lib/skills";
 import { sourcesKey } from "../sources/crypto";
 import type { Tokens } from "../sources/granolaClient";
 import { connectGranola, disconnectGranola, type SourceStatus, sourceStatuses, syncGranola, type SyncResult } from "../sources/granolaSync";
@@ -497,7 +497,6 @@ export class Workspace extends DurableObject<Env> {
 
   saveNote(input: SaveInput): SaveResult {
     const target = parsePath(input.path);
-    if (input.actor.kind === "app" && isSkillPath(target.path)) return { status: "protected" };
     return this.ctx.storage.transactionSync(() => {
       const existing = this.liveByPath(target.path);
       const now = Date.now();
@@ -551,7 +550,6 @@ export class Workspace extends DurableObject<Env> {
     return this.ctx.storage.transactionSync(() => {
       const note = this.liveById(input.id);
       if (!note) return { status: "not_found" };
-      if (input.actor.kind === "app" && (isSkillPath(note.path) || isSkillPath(target.path))) return { status: "protected" };
       const taken = this.liveByPath(target.path);
       if (taken && taken.rowid !== note.rowid) return { status: "exists" };
       if (taken && note.path === target.path) return { status: "renamed", note: toMeta(note) };

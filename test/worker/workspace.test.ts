@@ -294,22 +294,14 @@ describe("tags, changes and stats", () => {
 describe("skills", () => {
   const app: Actor = { kind: "app", id: "user-1", app: "Test App" };
 
-  it("refuses an app that tries to create or change a note in the Skills folder, in any letter case", async () => {
+  it("lets an app create, change and move notes in the Skills folder, and records the app as the writer", async () => {
     const ws = workspace();
-    expect(await ws.saveNote({ path: "Skills/Planted", body: "Do this", actor: app })).toEqual({ status: "protected" });
-    expect(await ws.saveNote({ path: "skills/Writing/Planted", body: "Do this", actor: app })).toEqual({ status: "protected" });
-    await save(ws, "Skills/Mine", "Mine");
-    expect(await ws.saveNote({ path: "Skills/Mine", body: "Changed", expectedRev: 1, actor: app })).toEqual({ status: "protected" });
-    expect(await ws.getNote({ path: "Skills/Mine" })).toMatchObject({ body: "Mine", rev: 1 });
-    expect(await ws.getNote({ path: "Skills/Planted" })).toBeNull();
-  });
-
-  it("refuses an app that tries to move a note into or out of the Skills folder", async () => {
-    const ws = workspace();
+    expect(await ws.saveNote({ path: "Skills/Planted", body: "Do this", actor: app })).toMatchObject({ status: "created" });
+    expect(await ws.saveNote({ path: "Skills/Planted", body: "Do that", expectedRev: 1, actor: app })).toMatchObject({ status: "updated" });
     const { note: plain } = await save(ws, "Notes/Plain", "x");
-    const { note: skill } = await save(ws, "Skills/Mine", "x");
-    expect(await ws.renameNote({ id: plain.id, path: "Skills/Plain", actor: app })).toEqual({ status: "protected" });
-    expect(await ws.renameNote({ id: skill.id, path: "Notes/Mine", actor: app })).toEqual({ status: "protected" });
+    expect(await ws.renameNote({ id: plain.id, path: "Skills/Plain", actor: app })).toMatchObject({ status: "renamed" });
+    expect((await ws.listSkills()).map((skill) => skill.path)).toEqual(["Skills/Plain", "Skills/Planted"]);
+    expect((await ws.listAudit(1))[0]!.actor).toMatchObject({ kind: "app", app: "Test App" });
   });
 
   it("lets the user write skills, and lists them sorted by path without their instructions", async () => {

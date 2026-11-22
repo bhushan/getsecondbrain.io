@@ -172,7 +172,7 @@ export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
         <h2 id="skills-title">Use your skills</h2>
         <p className="muted">
           Every connected app can also use the skills you write on the Skills page: instructions such as how to write a post in your voice or how you
-          review code. Apps follow the skill that fits a task, or the one you name, but can never change a skill.
+          review code. Apps follow the skill that fits a task, or the one you name. Apps you allow to write can add and update skills too, and every change keeps its earlier version.
         </p>
         <ul className="prompt-list">
           {SKILL_PROMPTS.map((prompt) => (

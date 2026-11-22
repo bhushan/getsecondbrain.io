@@ -36,8 +36,6 @@ export type SaveResult =
   | { status: "conflict"; note: NoteMeta }
   /** `expectedRev` was above 0 but there is no note at that path. */
   | { status: "not_found" }
-  /** A connected app tried to write a skill. Only the user writes skills, since apps follow them. */
-  | { status: "protected" }
   /** The workspace is at a fair-use limit (see limits.ts). Nothing was written. */
   | { status: "limit"; limit: LimitName };
 
@@ -45,7 +43,6 @@ export type RenameResult =
   | { status: "renamed"; note: NoteMeta }
   | { status: "exists" }
   | { status: "not_found" }
-  | { status: "protected" }
   | { status: "limit"; limit: LimitName };
 
 /** A skill as listed: everything but its instructions. */

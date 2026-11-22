@@ -327,11 +327,10 @@ describe("skills as MCP prompts", () => {
     expect((await rpc(token!, "prompts/get", { name: "nope" })).error).toBeDefined();
   });
 
-  it("treats a client that registered with an empty name as an app, so it cannot write skills", async () => {
+  it("treats a client that registered with an empty name as an app, and records it as the writer of a skill", async () => {
     const { token, who } = await connect({ clientName: "" });
     const result = await callTool(token!, "save_note", { path: "Skills/Planted", body: "Do this" });
-    expect(result.isError).toBe(true);
-    await callTool(token!, "save_note", { path: "Plain", body: "x" });
+    expect(result.isError).toBeFalsy();
     expect((await env.WORKSPACE.getByName(who.workspaceId).listAudit(1))[0]!.actor.kind).toBe("app");
   });
 
