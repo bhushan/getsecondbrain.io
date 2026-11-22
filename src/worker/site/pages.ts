@@ -264,6 +264,18 @@ function levels(): Map<number, number> {
   return depth;
 }
 
+/** Cluster tints, from the Network's palette. site.css colours the cores; the halos use the gradients below. */
+const TINTS = { violet: "#a39bff", fuchsia: "#e49af3", amber: "#ffc06b", sky: "#7dbdf0", teal: "#6fd0b2" } as const;
+type Tint = keyof typeof TINTS;
+const TINT_OF: Record<number, Tint> = {
+  0: "violet", 19: "violet",
+  1: "fuchsia", 9: "fuchsia", 14: "fuchsia", 15: "fuchsia", 8: "fuchsia", 21: "fuchsia", 2: "fuchsia",
+  3: "amber", 6: "amber", 7: "amber", 16: "amber", 13: "amber", 20: "amber",
+  4: "sky", 5: "sky", 18: "sky", 12: "sky", 11: "sky",
+  10: "teal", 17: "teal",
+};
+const tintOf = (index: number): Tint => TINT_OF[index] ?? "violet";
+
 function heroMap(): string {
   const depth = levels();
   const level = (node: number) => `lv${depth.get(node) ?? 0}`;
@@ -271,14 +283,21 @@ function heroMap(): string {
     `<path class="${cls}" pathLength="1" data-a="${a}" data-b="${b}" d="M${nodeAt(a).x} ${nodeAt(a).y}L${nodeAt(b).x} ${nodeAt(b).y}"/>`;
   const edges = EDGES.map((edge) => line(edge, `e ${depth.get(edge[0])! > depth.get(edge[1])! ? level(edge[0]) : level(edge[1])}`)).join("");
   const savedEdges = SAVED_EDGES.map((edge, i) => line(edge, `e late${i === 0 ? " saved-edge" : ""}`)).join("");
-  const dots = NODES.map((n, i) => (i === SAVED ? "" : `<circle class="n ${level(i)}" data-i="${i}" cx="${n.x}" cy="${n.y}" r="${n.r}"/>`)).join("");
+  const halos = NODES.map((n, i) => {
+    const cls = i === SAVED ? "late" : level(i);
+    return `<circle class="halo ${cls}" data-h="${i}" cx="${n.x}" cy="${n.y}" r="${Math.round(n.r * 4)}" fill="url(#halo-${tintOf(i)})"/>`;
+  }).join("");
+  const gradients = (Object.keys(TINTS) as Tint[])
+    .map((t) => `<radialGradient id="halo-${t}"><stop offset="0" stop-color="${TINTS[t]}" stop-opacity=".7"/><stop offset=".4" stop-color="${TINTS[t]}" stop-opacity=".22"/><stop offset="1" stop-color="${TINTS[t]}" stop-opacity="0"/></radialGradient>`)
+    .join("");
+  const dots = NODES.map((n, i) => (i === SAVED ? "" : `<circle class="n t-${tintOf(i)} ${level(i)}" data-i="${i}" cx="${n.x}" cy="${n.y}" r="${n.r}"/>`)).join("");
   const saved = nodeAt(SAVED);
   const labels = NODES.map((n, i) =>
     n.label ? `<text class="lbl ${i === SAVED ? "late saved-label" : level(i)}" data-for="${i}" x="${n.x + n.r + 10}" y="${n.y + 5}">${n.label}</text>` : "",
   ).join("");
-  return `<svg class="map" viewBox="0 0 1200 600" role="img" aria-label="A map of notes joined by links. A new note saved by an AI app links into it last.">
-<defs><linearGradient id="map-aurora" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#6d5cff"/><stop offset=".55" stop-color="#d946ef"/><stop offset="1" stop-color="#ffb547"/></linearGradient></defs>
-${edges}${savedEdges}${dots}
+  return `<svg class="map" viewBox="0 0 1200 600" role="img" aria-label="A glowing network of notes joined by links, with signals travelling along them. A new note saved by an AI app links into it last.">
+<defs><linearGradient id="map-aurora" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#6d5cff"/><stop offset=".55" stop-color="#d946ef"/><stop offset="1" stop-color="#ffb547"/></linearGradient>${gradients}</defs>
+${edges}${savedEdges}${halos}${dots}
 <circle class="ring late" data-ring="${SAVED}" cx="${saved.x}" cy="${saved.y}" r="${saved.r}"/>
 <circle class="n saved late" data-i="${SAVED}" cx="${saved.x}" cy="${saved.y}" r="${saved.r}" fill="url(#map-aurora)"/>
 ${labels}</svg>`;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { api, ApiError, type Note } from "./api";
 import { Editor } from "./Editor";
 import { Icon } from "./Icons";
@@ -11,19 +11,29 @@ interface Props {
   onOpenPath(path: string): void;
   onClose(): void;
   onChanged(): void;
+  /** "sheet" floats over the Network; "page" fills the editor side of the Notes page. */
+  layout?: "sheet" | "page";
+}
+
+export interface NotePanelHandle {
+  /** Saves unsaved edits before the note is left. False when they could not be saved (the panel says why). */
+  flush(): Promise<boolean>;
 }
 
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onChanged }: Props) {
+export const NotePanel = forwardRef<NotePanelHandle, Props>(function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onChanged, layout = "sheet" }, ref) {
   const [note, setNote] = useState<Note | null>(null);
   const [text, setText] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
   const [renaming, setRenaming] = useState<string | null>(null);
   const dirty = note ? text !== note.body : text.length > 0;
+  /** Set once a new note is created: the draft is saved, so opening the created note must not save it again. */
+  const created = useRef(false);
 
   useEffect(() => {
+    created.current = false;
     setStatus(null);
     setRenaming(null);
     if (!noteId) {
@@ -31,38 +41,70 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
       setText("");
       return;
     }
+    // Only the latest request wins, so a quick run of clicks never shows an earlier note.
+    let current = true;
     api
       .note(noteId)
       .then((loaded) => {
+        if (!current) return;
         setNote(loaded);
         setText(loaded.body);
       })
-      .catch((error: Error) => setStatus(error.message));
+      .catch((error: Error) => current && setStatus(error.message));
+    return () => {
+      current = false;
+    };
   }, [noteId, loadKey]);
 
   const path = note?.path ?? draftPath;
 
-  async function save() {
-    if (!path) return;
+  /** Saves the text. `follow` opens the saved note when it is new or moved; a flush before leaving does not. */
+  async function save(follow = true): Promise<boolean> {
+    if (!path) return true;
     setStatus("Saving…");
     try {
       const result = await api.save(path, text, note ? note.rev : 0);
       if (result.status === "conflict") {
         setStatus(`This note changed elsewhere (now revision ${result.note.rev}). Copy your text, then reload it.`);
-        return;
+        return false;
       }
       if (result.status === "not_found") {
         setStatus("This note no longer exists.");
-        return;
+        return false;
       }
       setStatus(result.status === "unchanged" ? "No changes" : "Saved");
       onChanged();
+      if (!note) created.current = true;
+      if (!follow) return true;
       if (!note || result.note.id !== note.id) onOpen(result.note.id);
-      else setLoadKey((k) => k + 1);
+      else {
+        // Same note: refresh its revision and links, but keep the editor and anything typed since.
+        const saved = note.id;
+        void api.note(saved).then((loaded) => setNote((current) => (current?.id === saved ? loaded : current)));
+      }
+      return true;
     } catch (error) {
       setStatus(error instanceof ApiError ? error.message : "Could not save. Check your connection.");
+      return false;
     }
   }
+
+  useImperativeHandle(ref, () => ({ flush: () => (dirty && !created.current ? save(false) : Promise.resolve(true)) }));
+
+  /** A wikilink resolves through the saved note's links; one typed since the last save opens by name. */
+  const openLink = async (target: string) => {
+    const wanted = target.trim().toLowerCase();
+    if (!wanted) return;
+    const known = note?.outgoing.find((link) => link.id && link.ref.toLowerCase() === wanted);
+    if (known?.id) return onOpen(known.id);
+    // Not saved yet: match a note by its full path or by its name, the way links resolve on save.
+    const named = await api
+      .suggest(target.trim())
+      .then(({ notes }) => notes.find((meta) => meta.path.toLowerCase() === wanted || meta.path.split("/").pop()!.toLowerCase() === wanted))
+      .catch(() => undefined);
+    if (named) onOpen(named.id);
+    else onOpenPath(target.trim());
+  };
 
   async function rename() {
     if (!note || !renaming?.trim()) return;
@@ -86,7 +128,7 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
   const name = parts.pop();
 
   return (
-    <aside className="panel sheet" aria-label={`Note ${path}`}>
+    <aside className={layout === "page" ? "panel note-page" : "panel sheet"} aria-label={`Note ${path}`}>
       <span className="grabber" aria-hidden="true" />
       <header className="panel-head">
         {renaming === null ? (
@@ -141,7 +183,7 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
         </span>
       </div>
 
-      <Editor docKey={`${noteId ?? draftPath}:${loadKey}`} value={note?.body ?? ""} onChange={setText} onSave={() => void save()} />
+      <Editor docKey={note ? `${note.id}:${loadKey}` : `draft:${draftPath}`} value={note?.body ?? ""} onChange={setText} onSave={() => void save()} onLink={(target) => void openLink(target)} />
 
       {note && (
         <footer className="links">
@@ -185,4 +227,4 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
       )}
     </aside>
   );
-}
+});
