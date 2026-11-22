@@ -23,7 +23,7 @@ Second Brain is in private beta, by invitation. Write to ${CONTACT} to ask for a
 ## How it works
 
 1. Connect one address: add the Second Brain MCP address to any AI app, sign in and pick a workspace.
-2. Save from any app: ask a connected app to remember something. It lands as a linked note in your map.
+2. Save from any app: ask a connected app to remember something. It lands as a linked note in your network.
 3. Recall everywhere: any other connected app can search and read the same notes, on any device.
 
 ## Works with

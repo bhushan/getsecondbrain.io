@@ -159,7 +159,7 @@ export const FAQ: [string, string][] = [
 export const plainText = (html: string) => html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 
 export const SITE_SUMMARY =
-  "Second Brain keeps your notes as one linked map that every AI app you connect can search, read and add to, through one MCP address. Save something in Claude, find it in ChatGPT, Cursor or your terminal. Write skills once and every connected app can follow them.";
+  "Second Brain keeps your notes as one linked network that every AI app you connect can search, read and add to, through one MCP address. Save something in Claude, find it in ChatGPT, Cursor or your terminal. Write skills once and every connected app can follow them.";
 
 /** schema.org data for the landing page: who makes it, what it is, and the FAQ as answers. */
 function landingStructuredData(origins: Origins) {
@@ -187,7 +187,7 @@ function landingStructuredData(origins: Origins) {
         featureList: [
           "One memory shared by every AI app you connect",
           "Works with any app or agent that supports MCP, including " + listInWords(APP_NAMES),
-          "Notes kept as a linked map, with every revision saved",
+          "Notes kept as a linked network, with every revision saved",
           "Skills: instructions you write once for every connected app",
           "Separate workspaces, read-only or read and write access, apps never delete",
         ],
@@ -306,7 +306,7 @@ ${labels}</svg>`;
 const HERO_MAP = heroMap();
 
 /** The product window in the hero: a workspace bar over the living map. */
-const productWindow = () => `<div class="window" aria-label="Second Brain showing the Personal workspace as a map of linked notes" role="group">
+const productWindow = () => `<div class="window" aria-label="Second Brain showing the Personal workspace as a network of linked notes" role="group">
 <div class="window-bar"><span class="ws"><span class="ws-dot" aria-hidden="true"></span>Personal</span>
 <span class="window-search">${icon("search")}Search notes</span>
 <span class="window-apps">${logo("claude", 18)}${logo("chatgpt", 18)}${logo("cursor", 18)}<span>3 apps connected</span></span></div>
@@ -381,7 +381,7 @@ export function landingPage(origins: Origins, mcpResource: string): string {
   const app = `${origins.app}/`;
   return shell({
     title: "Second Brain: one memory for every AI app",
-    description: "Keep your notes as one linked map, and let Claude, ChatGPT, Cursor and any other AI app or agent save and recall them through one MCP address.",
+    description: "Keep your notes as one linked network, and let Claude, ChatGPT, Cursor and any other AI app or agent save and recall them through one MCP address.",
     origins,
     path: "/",
     script: true,
@@ -392,7 +392,7 @@ ${nav(origins.app)}
 <div class="hero-copy">
 <a class="eyebrow-pill" href="#integrations"><span class="pulse" aria-hidden="true"></span>Private beta. Works with any MCP app${icon("arrow")}</a>
 <h1>One memory for every AI app you use.</h1>
-<p class="lede">Save something in Claude, find it in ChatGPT, Cursor or your terminal. Second Brain keeps your notes as one linked map that every AI app you connect can search, read and add to.</p>
+<p class="lede">Save something in Claude, find it in ChatGPT, Cursor or your terminal. Second Brain keeps your notes as one linked network that every AI app you connect can search, read and add to.</p>
 <div class="actions"><a class="button primary" href="${app}">Open Second Brain</a>
 <a class="button ghost" href="#how">See how it works</a></div>
 <p class="works-with">Works with any AI app or agent that supports MCP, on any device: in the browser, on desktop and phone, in your editor and in the terminal.</p>
@@ -410,7 +410,7 @@ ${nav(origins.app)}
 ${sectionHead("How it works", "Connect once. Remember everywhere.", "Add one address to each app. From then on, anything one app saves, every other app can find.")}
 <ol class="how-grid">
 <li class="how-card"><span class="num">1</span><h3>Connect one address</h3><p>Paste the Second Brain address into any AI app, sign in and pick a workspace.</p>${connectVisual(mcpResource)}</li>
-<li class="how-card"><span class="num">2</span><h3>Save from any app</h3><p>Ask any connected app to remember something. It lands as a linked note in your map.</p>${saveVisual()}</li>
+<li class="how-card"><span class="num">2</span><h3>Save from any app</h3><p>Ask any connected app to remember something. It lands as a linked note in your network.</p>${saveVisual()}</li>
 <li class="how-card"><span class="num">3</span><h3>Recall everywhere</h3><p>Any other app you connect can search and read the same notes, on any device.</p>${recallVisual()}</li>
 </ol>
 </div></section>
