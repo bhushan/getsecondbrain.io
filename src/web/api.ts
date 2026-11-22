@@ -120,6 +120,8 @@ export const api = {
   restore: (id: string) => request<NoteMeta>("/api/notes/restore", send("POST", { id })),
   skills: () => request<{ skills: SkillSummary[] }>("/api/skills"),
   trashList: () => request<{ notes: NoteMeta[] }>("/api/trash"),
+  deleteForever: (id: string) => request<{ deleted: number }>("/api/trash/delete", send("POST", { id })),
+  emptyTrash: () => request<{ deleted: number }>("/api/trash/empty", send("POST", {})),
   activity: () => request<{ entries: AuditEntry[] }>("/api/activity"),
   connections: () => request<{ connections: Connection[] }>("/api/connections"),
   disconnect: (id: string) => request<{ ok: true }>(`/api/connections?id=${encodeURIComponent(id)}`, { method: "DELETE" }),

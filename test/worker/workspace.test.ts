@@ -148,6 +148,39 @@ describe("renaming", () => {
 });
 
 describe("trash", () => {
+  it("deletes a trashed note forever, with its revisions, and leaves live notes alone", async () => {
+    const ws = workspace();
+    const { note: gone } = await save(ws, "Gone", "one");
+    await save(ws, "Gone", "two", 1);
+    const { note: kept } = await save(ws, "Kept", "links to [[Gone]]");
+    await ws.trashNote({ id: gone.id, actor: me });
+    expect(await ws.deleteForever({ ids: [gone.id, kept.id], actor: me })).toBe(1);
+    expect(await ws.listTrash()).toEqual([]);
+    expect(await ws.restoreNote({ id: gone.id, actor: me })).toBeNull();
+    expect(await ws.listRevisions(gone.id)).toEqual([]);
+    expect(await ws.getNote({ id: kept.id })).toMatchObject({ body: "links to [[Gone]]" });
+  });
+
+  it("empties the whole trash", async () => {
+    const ws = workspace();
+    for (const path of ["A", "B"]) {
+      const { note } = await save(ws, path, "x");
+      await ws.trashNote({ id: note.id, actor: me });
+    }
+    await save(ws, "Live", "x");
+    expect(await ws.deleteForever({ ids: "all", actor: me })).toBe(2);
+    expect(await ws.listTrash()).toEqual([]);
+    expect(await ws.getNote({ path: "Live" })).not.toBeNull();
+  });
+
+  it("never lets a connected app delete forever", async () => {
+    const ws = workspace();
+    const { note } = await save(ws, "A", "x");
+    await ws.trashNote({ id: note.id, actor: me });
+    expect(await ws.deleteForever({ ids: "all", actor: { kind: "app", id: "grant-1", app: "Some app" } })).toBe(0);
+    expect((await ws.listTrash()).map((n) => n.id)).toEqual([note.id]);
+  });
+
   it("hides a trashed note from reads, search, recents and backlinks, and restores it", async () => {
     const ws = workspace();
     const target = (await save(ws, "Target", "unique-word-zebra")).note;

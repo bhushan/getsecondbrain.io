@@ -56,7 +56,8 @@ export function ActivityPage({ onOpen }: { onOpen(id: string): void }) {
                   <Actor entry={entry} />
                   <p>
                     <strong>{entry.actor.kind === "app" ? entry.actor.app : "You"}</strong> {describeAction(entry.action)}{" "}
-                    {entry.noteId && (
+                    {entry.noteId && entry.action === "delete_forever" && "a note"}
+                    {entry.noteId && entry.action !== "delete_forever" && (
                       <button type="button" className="link" onClick={() => onOpen(entry.noteId!)}>
                         a note
                       </button>

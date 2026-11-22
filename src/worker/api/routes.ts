@@ -151,6 +151,15 @@ export async function handleApi(request: Request, env: Env, user: User, principa
         return note ? json(note) : fail(404, "Note not found in trash");
       }
 
+      case "POST /api/trash/delete": {
+        const body = await readJson<{ id?: unknown }>(request, 4096);
+        const deleted = await workspace.deleteForever({ ids: [text(body.id, "id")], actor });
+        return deleted ? json({ deleted }) : fail(404, "No trashed note with that id");
+      }
+
+      case "POST /api/trash/empty":
+        return json({ deleted: await workspace.deleteForever({ ids: "all", actor }) });
+
       case "GET /api/skills":
         return json({ skills: await workspace.listSkills() });
 

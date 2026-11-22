@@ -105,6 +105,29 @@ export class Workspace extends DurableObject<Env> {
       .map(toMeta);
   }
 
+  /**
+   * Deletes trashed notes for good, with their revisions; live notes are never touched. Only the user
+   * may do this: a connected app is refused, so MCP can never hard-delete. Returns how many went.
+   */
+  deleteForever(input: { ids: string[] | "all"; actor: Actor }): number {
+    if (input.actor.kind !== "user") return 0;
+    return this.ctx.storage.transactionSync(() => {
+      const rows =
+        input.ids === "all"
+          ? this.sql.exec<{ rowid: number; id: string }>("SELECT rowid, id FROM notes WHERE deleted_at IS NOT NULL").toArray()
+          : input.ids.flatMap((id) =>
+              this.sql.exec<{ rowid: number; id: string }>("SELECT rowid, id FROM notes WHERE id = ? AND deleted_at IS NOT NULL", id).toArray(),
+            );
+      const now = Date.now();
+      for (const row of rows) {
+        this.sql.exec("DELETE FROM note_revisions WHERE note = ?", row.rowid);
+        this.sql.exec("DELETE FROM notes WHERE rowid = ?", row.rowid);
+        this.sql.exec("INSERT INTO audit (actor, action, note_id, at) VALUES (?, ?, ?, ?)", JSON.stringify(input.actor), "delete_forever", row.id, now);
+      }
+      return rows.length;
+    });
+  }
+
   listTrash(limit = MAX_LIMIT): NoteMeta[] {
     return this.sql
       .exec(`SELECT ${META_COLUMNS} FROM notes n WHERE n.deleted_at IS NOT NULL ORDER BY n.deleted_at DESC LIMIT ?`, clamp(limit))

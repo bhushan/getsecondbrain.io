@@ -7,6 +7,7 @@ const ACTIONS: Record<string, string> = {
   relink: "updated links in",
   trash: "trashed",
   restore: "restored",
+  delete_forever: "deleted forever",
   "read:list_skills": "looked through your skills",
   "read:use_skill": "used one of your skills",
 };

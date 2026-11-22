@@ -5,6 +5,7 @@ describe("describeAction", () => {
   it("names a note change in plain words", () => {
     expect(describeAction("create")).toBe("created");
     expect(describeAction("relink")).toBe("updated links in");
+    expect(describeAction("delete_forever")).toBe("deleted forever");
   });
 
   it("turns a read tool into what the app used", () => {

@@ -70,6 +70,31 @@ describe("notes over the API", () => {
     expect((await api("/api/notes?path=New")).status).toBe(200);
   });
 
+  it("deletes trashed notes forever, one at a time or all at once", async () => {
+    const { api } = await signIn();
+    const post = (path: string, body: unknown) => api(path, { method: "POST", body: JSON.stringify(body) });
+    const ids: string[] = [];
+    for (const path of ["One", "Two", "Three"]) {
+      const created = (await (await put(api, { path, body: "x" })).json()) as { note: { id: string } };
+      ids.push(created.note.id);
+      await post("/api/notes/trash", { id: created.note.id });
+    }
+    expect(await (await post("/api/trash/delete", { id: ids[0] })).json()).toEqual({ deleted: 1 });
+    expect((await post("/api/trash/delete", { id: ids[0] })).status).toBe(404);
+    expect(await (await post("/api/trash/empty", {})).json()).toEqual({ deleted: 2 });
+    expect(await (await api("/api/trash")).json()).toEqual({ notes: [] });
+  });
+
+  it("never deletes another user's trashed notes", async () => {
+    const alice = await signIn();
+    const bob = await signIn();
+    const created = (await (await put(alice.api, { path: "Mine", body: "x" })).json()) as { note: { id: string } };
+    await alice.api("/api/notes/trash", { method: "POST", body: JSON.stringify({ id: created.note.id }) });
+    expect((await bob.api("/api/trash/delete", { method: "POST", body: JSON.stringify({ id: created.note.id }) })).status).toBe(404);
+    await bob.api("/api/trash/empty", { method: "POST", body: "{}" });
+    expect(((await (await alice.api("/api/trash")).json()) as { notes: unknown[] }).notes).toHaveLength(1);
+  });
+
   it("returns 400 for a bad path or body and 413 for a huge note", async () => {
     const { api } = await signIn();
     expect((await api("/api/notes?path=a/../b")).status).toBe(400);
