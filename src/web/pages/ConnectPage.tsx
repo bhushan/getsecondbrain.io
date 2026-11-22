@@ -43,7 +43,7 @@ export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
         <h1 id="connect-title">Connect any AI app or agent</h1>
         <p className="pg-lede">
           Chat apps, code editors and terminal agents, on any device, all connect with the same address. Once connected, an app can search your notes,
-          read them and save new ones, but only in the workspace you choose, and it can never delete anything.
+          read them, save new ones and move old ones to the trash, but only in the workspace you choose. Only you can delete a note for good.
         </p>
         <div className="address-card">
           <span className="address-label">Your connection address</span>
@@ -147,8 +147,8 @@ export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
           <div>
             <dt>Create and edit notes</dt>
             <dd>
-              Untick it for read only. When ticked, the app can save new notes, add to notes and link them. Every change keeps the earlier version, and apps
-              can never delete or trash a note.
+              Untick it for read only. When ticked, the app can save new notes, add to notes and link them. It can also move notes to the trash, where you
+              can restore them. Every change keeps the earlier version, and only you can delete a note for good.
             </dd>
           </div>
         </dl>

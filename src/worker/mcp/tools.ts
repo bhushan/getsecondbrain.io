@@ -8,7 +8,7 @@ import type { NoteMeta, SkillDetail } from "../workspace/types";
 /**
  * The MCP tools. Rules that hold for every tool here:
  * - The workspace is the principal's own. No tool takes a workspace argument.
- * - Nothing deletes, and nothing fetches a URL.
+ * - Nothing deletes for good: trash_note is a soft delete the user can undo. Nothing fetches a URL.
  * - Note content goes back to the model framed as stored data, since a note may contain text
  *   written to steer an assistant.
  * - The one exception is use_skill: skills are instructions in the user's library for their apps to follow.
@@ -225,6 +225,20 @@ export const TOOLS: Tool<any>[] = [
         const linked = scanMarkdown(current).links.some((link) => [to.path, to.title].some((x) => x.toLowerCase() === link.ref.toLowerCase()));
         return linked ? null : `[[${ref}]]`;
       });
+    },
+  }),
+
+  writeTool({
+    name: "trash_note",
+    title: "Move a note to the trash",
+    description:
+      "Moves a note to the trash. It leaves search, lists and links, and the user can restore it from the trash in Second Brain. Nothing is deleted for good: only the user can do that.",
+    input: { path },
+    idempotent: true,
+    async run({ workspace, principal }, args) {
+      const note = await workspace.getNote({ path: parsePath(args.path).path });
+      if (!note || !(await workspace.trashNote({ id: note.id, actor: actorOf(principal) }))) return error(`No note at "${args.path}".`);
+      return { text: `Moved ${note.path} to the trash. The user can restore it from there.` };
     },
   }),
 

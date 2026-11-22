@@ -207,7 +207,7 @@ ${loopback}
 <div class="perm"><span class="perm-icon">${ICONS.search}</span><span class="perm-text"><span class="perm-title">Search and read notes</span><span class="perm-desc">Find your notes and read them to answer you.</span></span><span class="tag">Always on</span></div>
 <label class="perm" for="write"><span class="perm-icon">${ICONS.pencil}</span><span class="perm-text"><span class="perm-title">Create and edit notes</span><span class="perm-desc">Save new notes and update existing ones. Every edit is kept as a revision.</span></span><input class="switch" type="checkbox" role="switch" id="write" name="write" value="on" checked></label>
 </div></fieldset>
-<div class="promise">${ICONS.shield}<p><strong>Apps can never delete your notes.</strong> You can disconnect ${name} any time from Connected apps.</p></div>
+<div class="promise">${ICONS.shield}<p><strong>Apps can never delete your notes for good.</strong> Anything they trash waits for you to restore. You can disconnect ${name} any time from Connected apps.</p></div>
 <div class="actions"><button class="btn primary" name="decision" value="approve">Connect</button><button class="btn secondary" name="decision" value="deny">Cancel</button></div>
 </form>
 </section>
