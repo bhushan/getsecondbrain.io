@@ -8,8 +8,7 @@
     "build": "vite build",
     "test": "vitest run",
     "types": "wrangler types && tsc --noEmit && tsc --noEmit -p test && tsc --noEmit -p src/web",
-    "check": "pnpm types && pnpm test && pnpm build && wrangler deploy --dry-run --env production && wrangler deploy --dry-run --env preview",
-    "deploy:preview": "pnpm build && wrangler d1 migrations apply getsecondbrain-preview --remote --env preview && wrangler deploy --env preview",
+    "check": "pnpm types && pnpm test && pnpm build && wrangler deploy --dry-run --env production",
     "deploy:production": "pnpm build && wrangler d1 migrations apply getsecondbrain-production --remote --env production && wrangler deploy --env production"
   },
   "devDependencies": {

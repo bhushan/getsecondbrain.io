@@ -15,9 +15,8 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
 - Test first. One test per distinct scenario. Run types, tests and a deploy dry run before a deploy.
 - Deploys are manual only. `.github/workflows/deploy.yml` is `workflow_dispatch`; never add push,
   pull request or schedule triggers.
-- Deploy to preview first (`pnpm deploy:preview`, hosts `preview-app`, `preview-mcp` and `preview-www`
-  .getsecondbrain.io, its own D1, KV and workspace objects, sign-in limited to ALLOWED_EMAILS), confirm
-  the change there, then deploy production and confirm on the live site. A green run is not proof.
+- There is no preview environment (founder's call: a personal project for now). Verify locally,
+  deploy, then confirm on the live site. A green run is not proof.
 - Sign-up is controlled by the `SIGNUP` var per environment: only the exact value "open" lets any
   verified Google account in; anything else allows only ALLOWED_EMAILS. Every workspace has fair-use
   limits (`src/worker/workspace/limits.ts`) enforced in `Workspace.saveNote` and `renameNote`; reads,
