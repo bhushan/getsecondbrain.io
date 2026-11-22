@@ -346,37 +346,75 @@ p { text-wrap: pretty; }
 }
 .window-apps span { margin-left: 14px; }
 
+/* The map is the product's Network: deep space, glowing notes, faint links, signals along them. Always dark. */
+.window {
+  --border: rgba(150, 140, 255, 0.18);
+  --foreground: #ece9ff;
+  --muted-foreground: #c9c6e8;
+  --secondary: rgba(163, 155, 255, 0.1);
+  --card: #1a1640;
+  --logo-mono-filter: invert(1);
+  background: radial-gradient(60% 70% at 50% 52%, #14103a 0%, #0b0820 55%, #05040d 100%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: rgba(150, 140, 255, 0.22);
+  box-shadow: var(--shadow-lg), 0 0 80px -20px rgba(109, 92, 255, 0.5), 0 0 0 6px color-mix(in oklab, var(--foreground) 3%, transparent);
+}
+.window::after {
+  content: ;
+  position: absolute;
+  inset: 41px 0 0;
+  background: radial-gradient(rgba(150, 140, 255, 0.22) 1px, transparent 1.6px) 0 0 / 26px 26px;
+  -webkit-mask-image: radial-gradient(70% 75% at 50% 50%, #000, transparent 100%);
+  mask-image: radial-gradient(70% 75% at 50% 50%, #000, transparent 100%);
+  pointer-events: none;
+}
+.window-bar { position: relative; z-index: 1; }
 .map {
+  position: relative;
+  z-index: 1;
+  display: block;
   width: 100%;
   height: auto;
-  background: var(--dots);
   touch-action: pan-y;
 }
-.map text { font: 500 15px var(--font-sans); fill: var(--muted-foreground); }
-.map .saved-label { fill: var(--foreground); font-weight: 600; }
+.map text { font: 500 15px var(--font-sans); fill: #c9c6e8; }
+.map .saved-label { fill: #fff; font-weight: 600; }
 .e {
   fill: none;
-  stroke: var(--foreground);
-  stroke-opacity: 0.18;
+  stroke: rgba(150, 140, 255, 0.16);
   stroke-width: 1.4;
   stroke-linecap: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
+  transition: stroke 0.25s;
   animation: draw 0.7s ease-out var(--d) forwards;
 }
-.e.saved-edge { stroke: var(--brand-fuchsia); stroke-opacity: 0.9; stroke-width: 2.4; }
+.e.hot { stroke: rgba(139, 125, 255, 0.8); }
+.e.saved-edge { stroke: rgba(228, 154, 243, 0.7); stroke-width: 2; }
+.e.saved-edge.hot { stroke: rgba(255, 192, 107, 0.9); }
+.halo {
+  opacity: 0;
+  pointer-events: none;
+  animation: fade 0.8s ease-out var(--d) forwards;
+}
 .n {
-  fill: var(--foreground);
-  fill-opacity: 0.85;
+  fill: #a39bff;
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
   animation: pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.35) var(--d) forwards;
 }
+.n.t-violet { fill: #a39bff; }
+.n.t-fuchsia { fill: #e49af3; }
+.n.t-amber { fill: #ffc06b; }
+.n.t-sky { fill: #7dbdf0; }
+.n.t-teal { fill: #6fd0b2; }
+.n.lit { fill: #fff6e0; }
 .n.saved { fill-opacity: 1; }
 .ring {
   fill: none;
-  stroke: var(--brand-fuchsia);
+  stroke: #e49af3;
   stroke-width: 2;
   opacity: 0;
   transform-box: fill-box;
@@ -384,6 +422,11 @@ p { text-wrap: pretty; }
   animation: ring 1.6s ease-out calc(var(--d) + 0.1s) forwards;
 }
 .lbl { opacity: 0; animation: fade 0.6s ease-out calc(var(--d) + 0.3s) forwards; }
+/* Signals and flashes are made by site.js and moved every frame. */
+.signal-core { fill: #fff6e0; }
+.signal-tail { fill: none; stroke-linecap: round; stroke-width: 3; }
+.flash { fill: none; stroke-width: 2; }
+.signal-halo, .signal-tail, .flash { pointer-events: none; }
 .lv0 { --d: 0.3s; }
 .lv1 { --d: 0.72s; }
 .lv2 { --d: 1.14s; }
@@ -1112,6 +1155,7 @@ code { font-family: var(--font-mono); }
   html { scroll-behavior: auto; }
   .e,
   .n,
+  .halo,
   .lbl,
   .ring,
   .float,
@@ -1122,6 +1166,7 @@ code { font-family: var(--font-mono); }
   .e { stroke-dashoffset: 0; }
   .n,
   .lbl,
+  .halo,
   .js .relay [data-step] { opacity: 1; }
   .ring { display: none; }
   .marquee { -webkit-mask-image: none; mask-image: none; }

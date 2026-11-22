@@ -149,7 +149,7 @@ export function SkillsPage({ onChanged }: { onChanged(): void }) {
           </li>
         </ul>
         <p className="muted pg-small">
-          Skills are notes in the Skills folder, so they also appear on your map and keep every revision. Importing a vault with a Skills
+          Skills are notes in the Skills folder, so they also appear in your network and keep every revision. Importing a vault with a Skills
           folder of SKILL.md files adds them all at once.
         </p>
       </section>

@@ -165,7 +165,7 @@ export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
             </li>
           ))}
         </ul>
-        <p className="muted">Notes an app saves appear on the map straight away, and every action is listed under Activity.</p>
+        <p className="muted">Notes an app saves appear in your network straight away, and every action is listed under Activity.</p>
       </section>
 
       <section className="pg-section" aria-labelledby="skills-title">

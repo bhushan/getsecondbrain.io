@@ -113,9 +113,34 @@ button.chip.missing { border-style: dashed; color: var(--muted-foreground); }
 .map { z-index: 1; overflow: hidden; }
 .map.behind .map-top, .map.behind .map-foot { visibility: hidden; }
 
-.graph { position: absolute; inset: 0; background: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0) 0 0 / 22px 22px; }
-/* The dot grid fades towards the edges; the canvases Sigma adds paint above this. */
-.graph::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 40%, var(--canvas) 100%); pointer-events: none; }
+/*
+ * The Network is always deep space, whatever the app theme: glow only reads on dark. The map card
+ * carries its own dark tokens, so the search, toolbar and empty state on it follow without overrides.
+ */
+.map {
+  --background: #07061a; --foreground: #f4f3ff; --card: #12102c; --card-foreground: #f4f3ff; --popover: #100e28;
+  --muted: #1c1a3c; --muted-foreground: #a6a3c9; --accent: #221f48; --border: rgba(170, 160, 255, 0.14); --input: rgba(170, 160, 255, 0.2);
+  --primary: #f4f3ff; --primary-foreground: #0c0a22; --ring: #7d76b8; --surface: #12102c; --canvas: #05040d;
+  --glass: rgba(16, 14, 40, 0.72); --dot: rgba(160, 150, 255, 0.16); --brand-ink: #b9b0ff;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 8px 24px -12px rgba(0, 0, 0, 0.7); --shadow-lg: 0 24px 64px -24px rgba(0, 0, 0, 0.9);
+  color-scheme: dark; color: var(--foreground); border-color: rgba(139, 125, 255, 0.18);
+}
+.graph {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 48%, rgba(42, 32, 120, 0.55), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 78% 20%, rgba(217, 70, 239, 0.08), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 18% 82%, rgba(255, 181, 71, 0.05), transparent 70%),
+    #05040d;
+}
+/* A faint grid of points, like a lab plate, fading out towards the edges. */
+.graph::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0) 0 0 / 24px 24px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 50%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 65% at 50% 50%, #000 30%, transparent 100%);
+}
+.graph .sigma-synapses { top: 0; left: 0; }
 .graph-error { position: absolute; top: 76px; left: 24px; right: 24px; margin: 0; color: var(--muted-foreground); }
 
 /* Sidebar */
@@ -356,7 +381,7 @@ button.chip.missing { border-style: dashed; color: var(--muted-foreground); }
     position: fixed; z-index: 7; left: 0; right: 0; bottom: 0; height: var(--tabs); padding: 4px 4px var(--safe-bottom);
     background: var(--shell); border-top: 1px solid var(--border);
   }
-  .dock ul { grid-template-columns: repeat(6, minmax(0, 1fr)); height: 100%; gap: 0; }
+  .dock ul { grid-template-columns: repeat(7, minmax(0, 1fr)); height: 100%; gap: 0; }
   .dock a {
     flex-direction: column; justify-content: center; gap: 2px; width: auto; height: 100%; min-height: 44px; padding: 0;
     font-size: 11px; border: 0; border-radius: 12px;
@@ -394,6 +419,115 @@ button.chip.missing { border-style: dashed; color: var(--muted-foreground); }
   .links { grid-template-columns: minmax(0, 1fr); gap: 14px; max-height: 26dvh; }
   .links button.chip { min-height: 36px; line-height: 34px; }
 }
+
+/* Notes page: the folder tree on the left, the open note in a full editor on the right */
+.notes-sheet { overflow: hidden; }
+.notes-page { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); height: 100%; min-height: 0; }
+.tree-pane {
+  display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); min-height: 0; min-width: 0;
+  border-right: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 35%, var(--surface));
+}
+.tree-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 10px 8px 18px; }
+.tree-head h1 { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.tree-total { font-size: 12px; font-weight: 500; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.tree-actions { display: flex; gap: 2px; }
+.tree-actions button.icon { min-width: 32px; min-height: 32px; }
+.tree-filter {
+  display: flex; align-items: center; gap: 8px; height: 34px; margin: 0 12px 8px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--muted-foreground);
+}
+.tree-filter:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-violet) 14%, transparent); }
+.tree-filter input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; outline: none; font-size: 13px; }
+.tree-filter input::-webkit-search-cancel-button { display: none; }
+.tree-naming { display: flex; align-items: center; gap: 8px; margin: 0 12px 8px; padding: 0 10px; height: 34px; border: 1px solid var(--ring); border-radius: var(--radius); background: var(--surface); color: var(--muted-foreground); }
+.tree-naming input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: 13px; }
+.tree-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 2px 6px 16px; }
+.tree, .tree-skeleton { list-style: none; margin: 0; padding: 0; }
+.tree-row {
+  --depth: 0; position: relative; display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 6px 0 calc(8px + var(--depth) * 16px);
+  border-radius: 7px; color: var(--foreground); font-size: 13.5px; line-height: 1.3; cursor: pointer; user-select: none; outline: none;
+}
+/* A faint guide for each level, so deep folders stay readable. */
+.tree-row::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: calc(var(--depth) * 16px - 1px); width: 1px;
+  background: var(--border); opacity: min(var(--depth), 1);
+}
+.tree-row:hover { background: color-mix(in oklab, var(--accent) 75%, transparent); }
+.tree-row:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }
+.tree-note[aria-selected="true"] { background: color-mix(in oklab, var(--brand-violet) 13%, var(--surface)); color: var(--brand-ink); font-weight: 500; }
+.tree-note[aria-selected="true"] .tree-dot { background: var(--brand-violet); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-violet) 22%, transparent); }
+.tree-chevron { display: grid; place-items: center; flex: none; width: 16px; color: var(--muted-foreground); transition: transform 0.16s ease; }
+.tree-chevron[data-open] { transform: rotate(90deg); }
+.tree-folder > .tree-row { font-weight: 500; }
+.tree-dot { flex: none; width: 6px; height: 6px; margin: 0 5px; border-radius: 50%; background: color-mix(in oklab, var(--muted-foreground) 55%, transparent); }
+.tree-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-count { flex: none; font-size: 11.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.tree-row button.tree-add { display: none; min-width: 24px; min-height: 24px; margin-right: -2px; border-radius: 6px; }
+.tree-row:hover .tree-count, .tree-row:focus-within .tree-count { display: none; }
+.tree-row:hover button.tree-add { display: grid; }
+.tree-empty { margin: 12px; color: var(--muted-foreground); font-size: 13px; line-height: 1.55; }
+.tree-skeleton li { height: 12px; margin: 13px 12px; border-radius: 6px; background: var(--muted); animation: breathe 1.4s ease-in-out infinite; }
+.tree-skeleton li:nth-child(3n) { width: 55%; margin-left: 28px; }
+.tree-skeleton li:nth-child(3n + 1) { width: 70%; }
+
+.note-pane { min-width: 0; min-height: 0; position: relative; }
+.note-pane-empty {
+  display: grid; place-content: center; justify-items: center; gap: 14px; height: 100%; padding: 24px; text-align: center; color: var(--muted-foreground);
+}
+.note-pane-empty p { margin: 0; font-size: 15px; }
+/* The note editor filling the right side, instead of floating as a sheet over the Network. */
+.panel.note-page {
+  position: relative; inset: auto; z-index: auto; width: auto; height: 100%; border: 0; border-radius: 0; box-shadow: none; background: var(--surface);
+  animation: none; padding-bottom: 0;
+}
+.note-page .panel-head { padding: 22px 16px 6px 40px; }
+.note-page .panel-tools { padding: 8px 40px 14px; }
+.note-page .editor { padding: 0 40px; }
+.note-page .editor .cm-content { max-width: 74ch; }
+.note-page .links { padding: 14px 40px 18px; }
+.note-page .note-title { font-size: 26px; }
+
+/* Live preview: formatted text, with the raw markers back on the cursor's lines */
+.editor .cm-line.cm-h1 { padding-top: 0.5em; }
+.editor .cm-line.cm-h2 { padding-top: 0.35em; }
+.editor .cm-wikilink { color: var(--brand-ink); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--brand-violet) 40%, transparent); text-underline-offset: 3px; cursor: pointer; }
+.editor .cm-wikilink:hover { text-decoration-color: currentColor; }
+.editor .cm-wikilink-raw { cursor: text; text-decoration: none; }
+.editor .cm-embed::before { content: "↳ "; color: var(--muted-foreground); }
+.editor .cm-md-link { color: var(--brand-ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, var(--brand-violet) 40%, transparent); }
+.editor .cm-inline-code { font-family: var(--font-mono); font-size: 0.88em; padding: 1px 4px; border-radius: 5px; background: var(--muted); }
+.editor .cm-line.cm-codeblock { font-family: var(--font-mono); font-size: 13px; background: color-mix(in oklab, var(--muted) 70%, transparent); padding-left: 12px; }
+.editor .cm-line.cm-quote { border-left: 3px solid color-mix(in oklab, var(--brand-violet) 45%, var(--border)); padding-left: 14px; color: var(--muted-foreground); }
+.editor .cm-line.cm-hr { background: linear-gradient(var(--border), var(--border)) center / 100% 1px no-repeat; }
+.editor .cm-bullet { display: inline-block; width: 1ch; color: var(--brand-ink); font-weight: 700; text-align: center; }
+.editor .cm-task { width: 15px; height: 15px; margin: 0 6px 0 0; vertical-align: -2px; accent-color: var(--brand-violet); cursor: pointer; }
+.editor .cm-line.cm-task-done { color: var(--muted-foreground); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--muted-foreground) 60%, transparent); }
+/* Frontmatter stays plain source in a quiet block, never read as a heading. */
+.editor .cm-line.cm-frontmatter { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; color: var(--muted-foreground); background: color-mix(in oklab, var(--muted) 55%, transparent); padding-left: 12px; }
+.editor .cm-line.cm-frontmatter, .editor .cm-line.cm-frontmatter * { font-size: 12.5px !important; font-weight: 400 !important; letter-spacing: 0 !important; color: var(--muted-foreground); }
+
+@media (max-width: 1099px) {
+  .note-page .panel-head { padding-left: 24px; }
+  .note-page .panel-tools, .note-page .editor, .note-page .links { padding-left: 24px; padding-right: 24px; }
+}
+@media (max-width: 760px) {
+  .notes-page { grid-template-columns: minmax(0, 1fr); }
+  .notes-page[data-open] .tree-pane { display: none; }
+  .notes-page:not([data-open]) .note-pane { display: none; }
+  .tree-pane { border-right: 0; }
+  .tree-row { min-height: 44px; font-size: 15px; }
+  .tree-row button.tree-add { display: grid; min-width: 40px; min-height: 40px; }
+  .tree-count { display: none; }
+  .tree-filter { height: 44px; }
+  .tree-filter input, .tree-naming input { font-size: 16px; }
+  .tree-actions button.icon { min-width: 44px; min-height: 44px; }
+  .panel.note-page { height: 100%; grid-template-rows: auto auto minmax(0, 1fr) auto; border: 0; border-radius: 0; box-shadow: none; animation: none; }
+  .note-page .grabber { display: none; }
+  .note-page .panel-head { padding: 10px 4px 4px 18px; }
+  .note-page .panel-tools, .note-page .editor, .note-page .links { padding-left: 18px; padding-right: 18px; }
+  .note-page .note-title { font-size: 21px; }
+}
+
 @keyframes sheet-up { from { transform: translateY(32px); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {

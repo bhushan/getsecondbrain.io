@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rewriteLinks, scanMarkdown } from "../../src/worker/lib/markdown";
+import { frontmatterLength, rewriteLinks, scanMarkdown, wikilinksInLine } from "../../src/worker/lib/markdown";
 
 describe("scanMarkdown links", () => {
   it("finds a plain wikilink", () => {
@@ -114,5 +114,33 @@ describe("rewriteLinks", () => {
   it("returns the same string when nothing matches", () => {
     const text = "[[Other]] text";
     expect(rewriteLinks(text, rename)).toBe(text);
+  });
+});
+
+describe("wikilinks in a line, for the editor", () => {
+  it("finds each link with its position, target and the text to show", () => {
+    const line = "See [[Launch plan]] and [[Projects/Budget|the budget]].";
+    expect(wikilinksInLine(line)).toEqual([
+      { from: 4, to: 19, target: "Launch plan", label: "Launch plan", labelFrom: 6, labelTo: 17, embed: false },
+      { from: 24, to: 54, target: "Projects/Budget", label: "the budget", labelFrom: 42, labelTo: 52, embed: false },
+    ]);
+  });
+
+  it("reads a heading link and an embed", () => {
+    const [heading, embed] = wikilinksInLine("[[Plan#Goals]] ![[diagram.png]]");
+    expect(heading).toMatchObject({ target: "Plan", label: "Plan#Goals", embed: false });
+    expect(embed).toMatchObject({ from: 15, target: "diagram.png", embed: true });
+  });
+
+  it("skips links inside inline code", () => {
+    expect(wikilinksInLine("`[[not a link]]` [[real]]").map((link) => link.target)).toEqual(["real"]);
+  });
+});
+
+describe("frontmatter length", () => {
+  it("measures the frontmatter block including both fences and the newline after", () => {
+    expect(frontmatterLength("---\ntitle: a\n---\nbody")).toBe(17);
+    expect(frontmatterLength("no frontmatter\n---")).toBe(0);
+    expect(frontmatterLength("---\nunclosed")).toBe(0);
   });
 });

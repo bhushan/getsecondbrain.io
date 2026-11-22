@@ -88,6 +88,45 @@ export function scanMarkdown(text: string): ScanResult {
   return { frontmatter: body.frontmatter, links: [...links.values()], tags: [...tags].sort() };
 }
 
+/** A wikilink on one line, with offsets into that line, for editors that style links in place. */
+export interface LineLink {
+  /** From the `!` or the first `[` to just after the closing `]]`. */
+  from: number;
+  to: number;
+  target: string;
+  /** The text a reader sees: the alias after `|`, otherwise what is written inside the brackets. */
+  label: string;
+  labelFrom: number;
+  labelTo: number;
+  embed: boolean;
+}
+
+/** Wikilinks on one line of prose, skipping inline code. Same rules as `scanMarkdown`. */
+export function wikilinksInLine(line: string): LineLink[] {
+  if (!line.includes("[[")) return [];
+  const prose = line.includes("`") ? line.replace(INLINE_CODE, (code) => " ".repeat(code.length)) : line;
+  const found: LineLink[] = [];
+  for (const match of prose.matchAll(WIKILINK)) {
+    const inner = match[2]!;
+    const target = linkTarget(inner);
+    if (!target) continue;
+    const from = match.index;
+    const innerFrom = from + match[1]!.length + 2;
+    const pipe = inner.indexOf("|");
+    const labelFrom = pipe === -1 ? innerFrom : innerFrom + pipe + 1;
+    const labelTo = innerFrom + inner.length;
+    found.push({ from, to: from + match[0].length, target, label: line.slice(labelFrom, labelTo), labelFrom, labelTo, embed: match[1] === "!" });
+  }
+  return found;
+}
+
+/** Characters taken by a leading frontmatter block (both `---` lines and the newline after), or 0. */
+export function frontmatterLength(text: string): number {
+  const body = splitFrontmatter(text);
+  if (body.frontmatter === null) return 0;
+  return body.lines.slice(0, body.start).join("\n").length + (body.start < body.lines.length ? 1 : 0);
+}
+
 /**
  * Rewrites wikilink targets, keeping each link's alias, heading and embed marker.
  * `rename` gets a target as `scanMarkdown` reports it and returns the new target, or null to leave it.

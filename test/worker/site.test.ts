@@ -109,6 +109,33 @@ describe("public site on the www host", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
+  it("draws the hero as a glowing neural network of real notes joined by real links", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    const map = html.match(/<svg class="map"[\s\S]*?<\/svg>/)?.[0] ?? "";
+    const cores = new Set([...map.matchAll(/<circle class="n [^"]*" data-i="(\d+)"/g)].map((m) => m[1]));
+    const links = [...map.matchAll(/data-a="(\d+)" data-b="(\d+)"/g)];
+    expect(cores.size).toBeGreaterThan(15);
+    expect(links.length).toBeGreaterThan(20);
+    for (const [, a, b] of links) {
+      expect(cores.has(a!), `link ${a}-${b}`).toBe(true);
+      expect(cores.has(b!), `link ${a}-${b}`).toBe(true);
+    }
+    // Every note has a soft halo, tinted by its cluster, and the signal halos are defined for the script.
+    expect([...map.matchAll(/class="halo /g)].length).toBe(cores.size);
+    for (const tint of ["violet", "fuchsia", "amber", "sky", "teal"]) expect(map).toContain(`id="halo-${tint}"`);
+    // The CSP forbids inline styles, so the markup carries none.
+    expect(map).not.toMatch(/\sstyle=/);
+  });
+
+  it("keeps the hero map surface deep-space dark and the signals styled in site.css", async () => {
+    const css = await (await exports.default.fetch(`${SITE}/site.css`)).text();
+    expect(css).toContain("#05040d");
+    expect(css).toContain("#fff6e0");
+    const script = await (await exports.default.fetch(`${SITE}/site.js`)).text();
+    expect(script).toContain("IntersectionObserver");
+    expect(script).not.toMatch(/\.style\b|setAttribute\(["']style/);
+  });
+
   it("serves the map script that brings the landing page to life", async () => {
     const html = await (await exports.default.fetch(`${SITE}/`)).text();
     expect(html).toContain('<script src="/site.js" defer></script>');

@@ -73,7 +73,7 @@ export function TrashPage({ onChanged }: { onChanged(): void }) {
             </svg>
           </span>
           <strong>The trash is empty.</strong>
-          <p>Notes you trash from the map land here. Bring them back, or delete them forever.</p>
+          <p>Notes you trash land here. Bring them back, or delete them forever.</p>
         </div>
       )}
       {notes && notes.length > 0 && (

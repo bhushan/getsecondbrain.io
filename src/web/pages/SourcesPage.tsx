@@ -65,7 +65,7 @@ export function SourcesPage({ onChanged }: { onChanged(): void }) {
   return (
     <main className="page page-sources">
       <PageHeader eyebrow="Sources" title="Bring notes in from your tools">
-        Connect a tool once and its notes arrive here on their own, linked into your map. Every AI app you connect can then search them.
+        Connect a tool once and its notes arrive here on their own, linked into your network. Every AI app you connect can then search them.
       </PageHeader>
 
       {notice && (

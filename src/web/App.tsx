@@ -4,14 +4,17 @@ import { appLogo } from "./appLogos";
 import { connectGuides } from "./connectGuides";
 import { type GraphHandle, GraphView } from "./GraphView";
 import { Icon, type IconName } from "./Icons";
-import { NotePanel } from "./NotePanel";
+import { NotePanel, type NotePanelHandle } from "./NotePanel";
+import { untitledPath } from "./noteTree";
+import { NotesPage } from "./NotesPage";
 import { ActivityPage, ConnectPage, SettingsPage, SignIn, SkillsPage, SourcesPage, TrashPage } from "./pages";
 import { Search } from "./Search";
 
-type Page = "map" | "skills" | "connect" | "sources" | "trash" | "activity" | "settings";
+type Page = "network" | "notes" | "skills" | "connect" | "sources" | "trash" | "activity" | "settings";
 /** Pages in the dock, plus Settings, which opens from the workspace menu and the account row. */
 const PAGES: { id: Page; label: string; short: string; icon: IconName; path: string; inDock?: false }[] = [
-  { id: "map", label: "Map", short: "Map", icon: "map", path: "/" },
+  { id: "network", label: "Network", short: "Network", icon: "map", path: "/" },
+  { id: "notes", label: "Notes", short: "Notes", icon: "folder", path: "/notes" },
   { id: "skills", label: "Skills", short: "Skills", icon: "skills", path: "/skills" },
   // AI apps use your notes over MCP; Sources send notes in. Paths stay stable for old links.
   { id: "connect", label: "AI apps", short: "AI apps", icon: "connect", path: "/connect" },
@@ -21,7 +24,7 @@ const PAGES: { id: Page; label: string; short: string; icon: IconName; path: str
   { id: "settings", label: "Settings", short: "Settings", icon: "settings", path: "/settings", inDock: false },
 ];
 /** The one-time import moved into Sources; its old address still lands there. */
-const pageFromPath = (path: string): Page => (path === "/import" ? "sources" : (PAGES.find((page) => page.path === path)?.id ?? "map"));
+const pageFromPath = (path: string): Page => (path === "/import" ? "sources" : (PAGES.find((page) => page.path === path)?.id ?? "network"));
 const WORKSPACE_KEY = "sb.workspace";
 const initial = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 
@@ -42,7 +45,7 @@ function EmptyMap({ mcpUrl, onConnect, onImport, onWrite }: { mcpUrl: string; on
   return (
     <section className="empty" aria-labelledby="empty-title">
       <img className="empty-mark" src="/logo.svg" alt="" width="48" height="48" />
-      <h2 id="empty-title">Connect an AI app to start your map</h2>
+      <h2 id="empty-title">Connect an AI app to start your network</h2>
       <p>Add one address to Claude, ChatGPT, Cursor or any agent. Every note it saves lands here, linked to the notes it mentions.</p>
       <ul className="empty-apps" aria-label="Apps with a setup guide">
         {apps.map((app) => (
@@ -76,6 +79,7 @@ export function App() {
   // Null until the map has loaded once, so the empty state never flashes before the notes arrive.
   const [stats, setStats] = useState<{ nodes: number; edges: number; laying: boolean } | null>(null);
   const graph = useRef<GraphHandle>(null);
+  const panel = useRef<NotePanelHandle>(null);
 
   const load = useCallback(async () => {
     try {
@@ -105,37 +109,67 @@ export function App() {
   }, []);
 
   useEffect(() => void load(), [load]);
+  /** Unsaved edits are saved before another note opens; if they cannot be, the note stays open and says why. */
+  const leaveNote = async () => (await panel.current?.flush()) ?? true;
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
   useEffect(() => {
-    const onPop = () => setPage(pageFromPath(location.pathname));
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    // Back and forward: save first; if the save fails, stay on the page that holds the unsaved text.
+    const onPop = async () => {
+      const next = pageFromPath(location.pathname);
+      if (next === pageRef.current) return;
+      if (await leaveNote()) setPage(next);
+      else history.pushState(null, "", PAGES.find((p) => p.id === pageRef.current)!.path);
+    };
+    const listener = () => void onPop();
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
   }, []);
 
-  const go = (next: Page) => {
+  const go = async (next: Page) => {
+    if (next !== page && !(await leaveNote())) return;
     const path = PAGES.find((p) => p.id === next)!.path;
     if (location.pathname !== path) history.pushState(null, "", path);
     setPage(next);
   };
 
-  const open = (id: string) => {
+  /** Opens a note where the user is: in the editor on the Notes page, otherwise on the Network. */
+  const open = async (id: string) => {
+    if (id === selected && draftPath === null) return;
+    if (!(await leaveNote())) return;
     setDraftPath(null);
     setSelected(id);
-    if (page !== "map") go("map");
+    if (page === "notes") return;
+    if (page !== "network") await go("network");
     window.setTimeout(() => graph.current?.focus(id, coveredByNote()), 50);
+  };
+
+  const draft = async (path: string) => {
+    if (!(await leaveNote())) return;
+    setSelected(null);
+    setDraftPath(path);
+    if (page !== "notes" && page !== "network") await go("network");
   };
 
   const openPath = async (path: string) => {
     try {
       const note = await api.noteByPath(path);
-      open(note.id);
+      await open(note.id);
     } catch {
-      setSelected(null);
-      setDraftPath(path);
-      if (page !== "map") go("map");
+      await draft(path);
     }
   };
 
-  const switchWorkspace = (id: string) => {
+  const closeNote = async () => {
+    if (!(await leaveNote())) return;
+    setSelected(null);
+    setDraftPath(null);
+  };
+
+  const switchWorkspace = async (id: string) => {
+    // Save into the workspace the text belongs to, before the switch.
+    if (!(await leaveNote())) return;
     try {
       localStorage.setItem(WORKSPACE_KEY, id);
     } catch {}
@@ -153,7 +187,7 @@ export function App() {
     const created = await api.createWorkspace(name.trim());
     setNaming(null);
     await load();
-    switchWorkspace(created.id);
+    await switchWorkspace(created.id);
   };
 
   const forgetWorkspace = () => {
@@ -169,12 +203,12 @@ export function App() {
     setStats(null);
     await load();
     setVersion((v) => v + 1);
-    go("map");
+    go("network");
   };
   const workspaceRestored = async (id: string) => {
     await load();
-    switchWorkspace(id);
-    go("map");
+    await switchWorkspace(id);
+    go("network");
   };
 
   if (me === null)
@@ -187,26 +221,27 @@ export function App() {
   if (me === "signed_out") return <SignIn />;
 
   const refresh = () => setVersion((v) => v + 1);
-  const newNote = () => (setSelected(null), setDraftPath("Untitled"));
-  const panelOpen = page === "map" && (selected !== null || draftPath !== null);
+  const newNote = () => void draft(untitledPath(graph.current?.paths() ?? [], ""));
+  const panelOpen = page === "network" && (selected !== null || draftPath !== null);
   const workspace = me.workspaces.find((w) => w.id === me.workspaceId) ?? me.workspaces[0];
 
   return (
     <div className="app" data-page={page} data-note={panelOpen || undefined}>
-      <div className={page === "map" ? "map" : "map behind"} aria-hidden={page !== "map" || undefined}>
+      <div className={page === "network" ? "map" : "map behind"} aria-hidden={page !== "network" || undefined}>
         <GraphView
           ref={graph}
           version={version}
           selected={selected}
           highlighted={highlighted}
-          onSelect={(id) => (id ? open(id) : (setSelected(null), setDraftPath(null)))}
+          active={page === "network"}
+          onSelect={(id) => void (id ? open(id) : closeNote())}
           onStats={setStats}
         />
         <div className="map-top">
-          <Search onResults={(ids) => setHighlighted(new Set(ids))} onOpen={open} onCreate={(path) => void openPath(path)} />
+          <Search onResults={(ids) => setHighlighted(new Set(ids))} onOpen={(id) => void open(id)} onCreate={(path) => void openPath(path)} />
         </div>
         {stats && stats.nodes > 0 && (
-          <div className="map-foot" role="toolbar" aria-label="Map">
+          <div className="map-foot" role="toolbar" aria-label="Network">
             <span className="map-count" role="status">
               <span className={stats.laying ? "pulse on" : "pulse"} aria-hidden="true" />
               {stats.laying ? (
@@ -217,7 +252,7 @@ export function App() {
                 </>
               )}
             </span>
-            <button className="ghost" onClick={() => graph.current?.relayout()} disabled={stats.laying || stats.nodes < 2} aria-label="Rearrange the map" title="Rearrange">
+            <button className="ghost" onClick={() => graph.current?.relayout()} disabled={stats.laying || stats.nodes < 2} aria-label="Rearrange the network" title="Rearrange">
               <Icon name="shuffle" /> <span>Rearrange</span>
             </button>
             <button className="primary" onClick={newNote} aria-label="New note" title="New note">
@@ -225,7 +260,7 @@ export function App() {
             </button>
           </div>
         )}
-        {stats?.nodes === 0 && !panelOpen && page === "map" && (
+        {stats?.nodes === 0 && !panelOpen && page === "network" && (
           <EmptyMap mcpUrl={me.mcpUrl} onConnect={() => go("connect")} onImport={() => go("sources")} onWrite={newNote} />
         )}
       </div>
@@ -235,10 +270,10 @@ export function App() {
           <a
             className="brand"
             href="/"
-            aria-label="Second Brain, map"
+            aria-label="Second Brain, network"
             onClick={(event) => {
               event.preventDefault();
-              go("map");
+              go("network");
             }}
           >
             <img src="/logo.svg" alt="" width="28" height="28" />
@@ -262,7 +297,7 @@ export function App() {
                   const value = event.target.value;
                   if (value === "__new") setNaming("");
                   else if (value === "__settings") go("settings");
-                  else switchWorkspace(value);
+                  else void switchWorkspace(value);
                 }}
               >
                 {me.workspaces.map((option) => (
@@ -337,13 +372,26 @@ export function App() {
         </nav>
       </div>
 
-      {page !== "map" && (
-        <div className="sheet page-sheet">
+      {page !== "network" && (
+        <div className={page === "notes" ? "sheet page-sheet notes-sheet" : "sheet page-sheet"}>
+          {page === "notes" && (
+            <NotesPage
+              ref={panel}
+              version={version}
+              selected={selected}
+              draftPath={draftPath}
+              onOpen={(id) => void open(id)}
+              onOpenPath={(path) => void openPath(path)}
+              onDraft={(path) => void draft(path)}
+              onClose={() => void closeNote()}
+              onChanged={refresh}
+            />
+          )}
           {page === "skills" && <SkillsPage onChanged={refresh} />}
           {page === "connect" && <ConnectPage me={me} onSkills={() => go("skills")} />}
           {page === "sources" && <SourcesPage onChanged={refresh} />}
           {page === "trash" && <TrashPage onChanged={refresh} />}
-          {page === "activity" && <ActivityPage onOpen={open} />}
+          {page === "activity" && <ActivityPage onOpen={(id) => void open(id)} />}
           {page === "settings" && (
             <SettingsPage
               me={me}
@@ -357,11 +405,12 @@ export function App() {
 
       {panelOpen && (
         <NotePanel
+          ref={panel}
           noteId={selected}
           draftPath={draftPath}
-          onOpen={open}
+          onOpen={(id) => void open(id)}
           onOpenPath={(path) => void openPath(path)}
-          onClose={() => (setSelected(null), setDraftPath(null))}
+          onClose={() => void closeNote()}
           onChanged={refresh}
         />
       )}

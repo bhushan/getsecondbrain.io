@@ -1,10 +1,11 @@
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { tags } from "@lezer/highlight";
 import { EditorView, keymap } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { useEffect, useRef } from "react";
+import { livePreview } from "./livePreview";
 
 interface Props {
   /** Changing the key replaces the document (a different note, or a reload after a conflict). */
@@ -12,6 +13,8 @@ interface Props {
   value: string;
   onChange(value: string): void;
   onSave(): void;
+  /** A wikilink was opened (click on a rendered link, or Cmd/Ctrl+click). */
+  onLink(target: string): void;
 }
 
 // Colours come from the design tokens, so the editor follows the light and dark themes with the rest of the app.
@@ -45,12 +48,12 @@ const highlight = HighlightStyle.define([
   { tag: [tags.processingInstruction, tags.meta, tags.quote, tags.contentSeparator], color: "var(--muted-foreground)" },
 ]);
 
-/** Plain markdown editing: the text is the note, nothing is converted. */
-export function Editor({ docKey, value, onChange, onSave }: Props) {
+/** Markdown editing with live preview: the text is the note, nothing is converted. */
+export function Editor({ docKey, value, onChange, onSave, onLink }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
-  const callbacks = useRef({ onChange, onSave });
-  callbacks.current = { onChange, onSave };
+  const callbacks = useRef({ onChange, onSave, onLink });
+  callbacks.current = { onChange, onSave, onLink };
 
   useEffect(() => {
     if (!host.current) return;
@@ -60,7 +63,8 @@ export function Editor({ docKey, value, onChange, onSave }: Props) {
         doc: value,
         extensions: [
           basicSetup,
-          markdown(),
+          markdown({ base: markdownLanguage }),
+          livePreview((target) => callbacks.current.onLink(target)),
           EditorView.lineWrapping,
           theme,
           syntaxHighlighting(highlight),
