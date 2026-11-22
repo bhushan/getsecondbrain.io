@@ -200,6 +200,7 @@ describe("connecting an app", () => {
     const { approved, token } = await connect({ workspace: stranger.workspaceId });
     expect(token).toBeNull();
     expect(approved.status).toBe(403);
+    expect(await approved.text()).toContain("That workspace is not yours");
   });
 
   it("keeps two users' connections apart", async () => {

@@ -1,6 +1,7 @@
 import { createSession, isAllowed, upsertGoogleUser } from "../control/accounts";
 import { hosts } from "../config";
 import { hostCookie, LOGIN_COOKIE, readCookie, SESSION_COOKIE } from "./cookies";
+import { type Action, messagePage } from "./pages";
 
 const AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -47,11 +48,18 @@ export async function startLogin(request: Request, env: Env): Promise<Response> 
   });
 }
 
-const page = (status: number, message: string) =>
-  new Response(
-    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Sign-in</title><body style="font:16px system-ui;margin:3rem auto;max-width:32rem;padding:0 1rem"><p>${message}</p><p><a href="/">Back</a></p>`,
-    { status, headers: { "content-type": "text/html; charset=utf-8", "set-cookie": hostCookie(LOGIN_COOKIE, "", 0) } },
-  );
+const SIGN_IN_AGAIN = { href: "/auth/login", label: "Sign in again" };
+const OTHER_ACCOUNT = { href: "/auth/login", label: "Use another account" };
+
+const page = (status: number, title: string, message: string, action: Action) =>
+  new Response(messagePage(title, message, action), {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8", "set-cookie": hostCookie(LOGIN_COOKIE, "", 0) },
+  });
+
+const expired = () =>
+  page(400, "This sign-in link expired", "Sign-in links last ten minutes. Start again and it only takes a moment.", SIGN_IN_AGAIN);
+const googleFailed = () => page(502, "Google sign-in did not finish", "Google could not complete the sign-in. Please try again.", SIGN_IN_AGAIN);
 
 /** GET /auth/google/callback: checks state, exchanges the code, signs the user in. */
 export async function finishLogin(request: Request, env: Env): Promise<Response> {
@@ -61,15 +69,15 @@ export async function finishLogin(request: Request, env: Env): Promise<Response>
     saved = JSON.parse(readCookie(request, LOGIN_COOKIE) ?? "");
   } catch {
     console.warn("login: no login cookie");
-    return page(400, "This sign-in link expired. Please try again.");
+    return expired();
   }
   const state = url.searchParams.get("state");
   if (!state || state !== saved.state) {
     console.warn("login: state mismatch");
-    return page(400, "This sign-in link expired. Please try again.");
+    return expired();
   }
   const code = url.searchParams.get("code");
-  if (!code) return page(400, "Sign-in was cancelled.");
+  if (!code) return page(400, "Sign-in was cancelled", "Nothing was changed. Sign in whenever you are ready.", { href: "/auth/login", label: "Sign in" });
 
   const tokenResponse = await fetch(TOKEN_URL, {
     method: "POST",
@@ -87,19 +95,19 @@ export async function finishLogin(request: Request, env: Env): Promise<Response>
     // Google's error code and description only; they never contain the code or the secret.
     const failure = (await tokenResponse.json().catch(() => ({}))) as { error?: string; error_description?: string };
     console.warn("login: token exchange failed", tokenResponse.status, failure.error, failure.error_description);
-    return page(502, "Google sign-in failed. Please try again.");
+    return googleFailed();
   }
   const { access_token: accessToken } = (await tokenResponse.json()) as { access_token?: string };
   const profileResponse = await fetch(USERINFO_URL, { headers: { authorization: `Bearer ${accessToken}` } });
   if (!profileResponse.ok) {
     console.warn("login: userinfo failed", profileResponse.status);
-    return page(502, "Google sign-in failed. Please try again.");
+    return googleFailed();
   }
   const profile = (await profileResponse.json()) as { sub?: string; email?: string; email_verified?: boolean; name?: string };
-  if (!profile.sub || !profile.email || profile.email_verified !== true) return page(403, "Your Google account has no verified email.");
+  if (!profile.sub || !profile.email || profile.email_verified !== true) return page(403, "This Google account has no verified email", "Second Brain needs a verified email address. Verify it with Google, or sign in with another account.", OTHER_ACCOUNT);
   if (!isAllowed(env, profile.email)) {
     console.warn("login: email not on the allowlist");
-    return page(403, "Second Brain is in private beta. This account is not on the list yet.");
+    return page(403, "You are not on the list yet", "Second Brain is in private beta and opens by invitation. This Google account is not on the list yet.", OTHER_ACCOUNT);
   }
 
   const user = await upsertGoogleUser(env.DB, { sub: profile.sub, email: profile.email, name: profile.name ?? profile.email });
