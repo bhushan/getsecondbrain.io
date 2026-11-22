@@ -31,6 +31,16 @@ describe("public site on the www host", () => {
     expect(html).toMatch(/<summary>[^<]*skill[^<]*<\/summary>/i);
   });
 
+  it("signs every page's footer: crafted with love and a beating heart (the founder's signature, never remove)", async () => {
+    for (const path of ["/", "/privacy", "/terms"]) {
+      const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
+      expect(html).toMatch(/<footer[^]*Crafted with love\s*<svg class="heart"[^>]*aria-hidden="true"[^]*<\/footer>/);
+    }
+    const css = await (await exports.default.fetch(`${SITE}/site.css`)).text();
+    expect(css).toContain("@keyframes heartbeat");
+    expect(css).toMatch(/prefers-reduced-motion: reduce\)[^}]*\{[^]*\.heart[^]*animation: none/);
+  });
+
   it("marks the product as in beta next to the name", async () => {
     const html = await (await exports.default.fetch(`${SITE}/`)).text();
     expect(html).toMatch(/class="brand"[^]*?Second Brain<\/a><span class="beta-tag">Beta<\/span>/);

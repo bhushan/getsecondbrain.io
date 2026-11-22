@@ -1029,6 +1029,15 @@ code { font-family: var(--font-mono); }
 .doc li { margin-bottom: 10px; }
 
 /* Narrower desktops: the floating cards tuck in closer to the window */
+/* The founder's signature in every footer: crafted with love, and a beating heart. Never remove. */
+.signature { display: inline-flex; align-items: center; gap: 6px; }
+.heart { flex: none; fill: #ef4444; transform-origin: center; animation: heartbeat 1.4s ease-in-out infinite; }
+@keyframes heartbeat {
+  0%, 40%, 100% { transform: scale(1); }
+  10%, 30% { transform: scale(1.25); }
+  20% { transform: scale(1.05); }
+}
+
 @media (max-width: 1180px) {
   .f1 { left: -16px; }
   .f2 { right: -12px; }
@@ -1106,6 +1115,7 @@ code { font-family: var(--font-mono); }
   .lbl,
   .ring,
   .float,
+  .heart,
   .js .relay [data-step],
   .js .relay.in [data-step],
   .js .relay.in .link-line { animation: none !important; }
