@@ -14,7 +14,8 @@ const EDGE = "rgba(143, 179, 217, 0.26)";
 const EDGE_ACTIVE = "rgba(255, 200, 87, 0.75)";
 
 export interface GraphHandle {
-  focus(id: string): void;
+  /** Centres a note in the part of the map not covered by `inset` (pixels hidden on the right and at the bottom). */
+  focus(id: string, inset?: { right: number; bottom: number }): void;
   relayout(): void;
 }
 
@@ -115,12 +116,18 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView({ ver
   };
 
   useImperativeHandle(ref, () => ({
-    focus(id) {
+    focus(id, inset = { right: 0, bottom: 0 }) {
       const sigma = sigmaRef.current;
       const data = sigma?.getNodeDisplayData(id);
       if (!sigma || !data) return;
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      sigma.getCamera().animate({ x: data.x, y: data.y, ratio: 0.35 }, { duration: reduce ? 0 : 500 });
+      const target = { ...sigma.getCamera().getState(), x: data.x, y: data.y, ratio: 0.35 };
+      // Move the camera by half the covered area, so the note sits in the middle of what stays visible.
+      const origin = sigma.viewportToFramedGraph({ x: 0, y: 0 }, { cameraState: target });
+      const shifted = sigma.viewportToFramedGraph({ x: inset.right / 2, y: inset.bottom / 2 }, { cameraState: target });
+      target.x += shifted.x - origin.x;
+      target.y += shifted.y - origin.y;
+      sigma.getCamera().animate(target, { duration: reduce ? 0 : 500 });
     },
     relayout() {
       const graph = graphRef.current;

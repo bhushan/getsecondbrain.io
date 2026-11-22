@@ -1,20 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Me, setWorkspace } from "./api";
 import { type GraphHandle, GraphView } from "./GraphView";
+import { Icon, type IconName } from "./Icons";
 import { NotePanel } from "./NotePanel";
 import { ActivityPage, ConnectPage, ImportPage, SignIn, TrashPage } from "./pages";
 import { Search } from "./Search";
 
 type Page = "map" | "connect" | "import" | "trash" | "activity";
-const PAGES: { id: Page; label: string; path: string }[] = [
-  { id: "map", label: "Map", path: "/" },
-  { id: "import", label: "Import", path: "/import" },
-  { id: "connect", label: "Connect apps", path: "/connect" },
-  { id: "activity", label: "Activity", path: "/activity" },
-  { id: "trash", label: "Trash", path: "/trash" },
+const PAGES: { id: Page; label: string; short: string; icon: IconName; path: string }[] = [
+  { id: "map", label: "Map", short: "Map", icon: "map", path: "/" },
+  { id: "connect", label: "Connect apps", short: "Connect", icon: "connect", path: "/connect" },
+  { id: "import", label: "Import", short: "Import", icon: "import", path: "/import" },
+  { id: "activity", label: "Activity", short: "Activity", icon: "activity", path: "/activity" },
+  { id: "trash", label: "Trash", short: "Trash", icon: "trash", path: "/trash" },
 ];
 const pageFromPath = (path: string): Page => PAGES.find((page) => page.path === path)?.id ?? "map";
 const WORKSPACE_KEY = "sb.workspace";
+
+/** How much of the map an open note sheet covers: on the right on wide screens, at the bottom on phones. */
+function coveredByNote(): { right: number; bottom: number } {
+  const sheet = document.querySelector(".panel")?.getBoundingClientRect();
+  if (!sheet) return { right: 0, bottom: 0 };
+  const fromBottom = sheet.left < window.innerWidth / 3;
+  return fromBottom ? { right: 0, bottom: window.innerHeight - sheet.top } : { right: window.innerWidth - sheet.left, bottom: 0 };
+}
 
 export function App() {
   const [me, setMe] = useState<Me | null | "signed_out">(null);
@@ -70,7 +79,7 @@ export function App() {
     setDraftPath(null);
     setSelected(id);
     if (page !== "map") go("map");
-    window.setTimeout(() => graph.current?.focus(id), 50);
+    window.setTimeout(() => graph.current?.focus(id, coveredByNote()), 50);
   };
 
   const openPath = async (path: string) => {
@@ -111,101 +120,127 @@ export function App() {
   const panelOpen = page === "map" && (selected !== null || draftPath !== null);
 
   return (
-    <div className={`app ${panelOpen ? "with-panel" : ""}`}>
-      <nav className="rail" aria-label="Main">
-        <div className="brand">Second Brain</div>
-        <label className="workspace">
-          <span className="sr-only">Workspace</span>
-          <select
-            value={me.workspaceId}
-            onChange={(event) => (event.target.value === "__new" ? setNaming("") : switchWorkspace(event.target.value))}
-          >
-            {me.workspaces.map((workspace) => (
-              <option key={workspace.id} value={workspace.id}>
-                {workspace.name}
-              </option>
-            ))}
-            <option value="__new">New workspace…</option>
-          </select>
-        </label>
-        {naming !== null && (
-          <form
-            className="new-workspace"
-            onSubmit={(event) => {
+    <div className="app" data-page={page} data-note={panelOpen || undefined}>
+      <div className={page === "map" ? "map" : "map behind"} aria-hidden={page !== "map" || undefined}>
+        <GraphView
+          ref={graph}
+          version={version}
+          selected={selected}
+          highlighted={highlighted}
+          onSelect={(id) => (id ? open(id) : (setSelected(null), setDraftPath(null)))}
+          onStats={setStats}
+        />
+        <div className="map-top">
+          <Search onResults={(ids) => setHighlighted(new Set(ids))} onOpen={open} onCreate={(path) => void openPath(path)} />
+        </div>
+        <div className="map-foot">
+          <span className="map-count" role="status">
+            {stats.nodes.toLocaleString()} notes, {stats.edges.toLocaleString()} links
+            {stats.laying && <span className="arranging">, arranging…</span>}
+          </span>
+          <button className="ghost" onClick={() => graph.current?.relayout()} disabled={stats.laying || stats.nodes < 2}>
+            <Icon name="shuffle" /> <span>Rearrange</span>
+          </button>
+          <button className="sun" onClick={() => (setSelected(null), setDraftPath("Untitled"))}>
+            <Icon name="plus" /> <span>New note</span>
+          </button>
+        </div>
+        {stats.nodes === 0 && !panelOpen && page === "map" && (
+          <div className="empty">
+            <h2>An empty map</h2>
+            <p>Connect an AI app or agent to start saving notes, import your Obsidian vault, or write the first note yourself.</p>
+            <div className="empty-actions">
+              <button className="sun" onClick={() => go("connect")}>
+                Connect an app
+              </button>
+              <button className="ghost" onClick={() => go("import")}>
+                Import a vault
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rail">
+        <header className="topbar">
+          <a
+            className="brand"
+            href="/"
+            onClick={(event) => {
               event.preventDefault();
-              void newWorkspace(naming);
+              go("map");
             }}
           >
-            <input autoFocus placeholder="Workspace name" aria-label="New workspace name" value={naming} onChange={(event) => setNaming(event.target.value)} />
-            <button type="submit">Create</button>
-            <button type="button" onClick={() => setNaming(null)}>
-              Cancel
+            <img src="/logo.svg" alt="" width="28" height="28" />
+            <span className="brand-name">Second Brain</span>
+            <span className="beta-tag">Beta</span>
+          </a>
+          <label className="workspace">
+            <span className="sr-only">Workspace</span>
+            <select
+              value={me.workspaceId}
+              onChange={(event) => (event.target.value === "__new" ? setNaming("") : switchWorkspace(event.target.value))}
+            >
+              {me.workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </option>
+              ))}
+              <option value="__new">New workspace…</option>
+            </select>
+          </label>
+          {naming !== null && (
+            <form
+              className="new-workspace"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void newWorkspace(naming);
+              }}
+            >
+              <input autoFocus placeholder="Workspace name" aria-label="New workspace name" value={naming} onChange={(event) => setNaming(event.target.value)} />
+              <button type="submit">Create</button>
+              <button type="button" onClick={() => setNaming(null)}>
+                Cancel
+              </button>
+            </form>
+          )}
+          <form method="post" action="/auth/logout" className="account">
+            <span title={me.user.email}>{me.user.name}</span>
+            <button type="submit" aria-label="Sign out" title="Sign out">
+              <Icon name="signout" />
             </button>
           </form>
-        )}
-        <ul>
-          {PAGES.map((item) => (
-            <li key={item.id}>
-              <a
-                href={item.path}
-                aria-current={page === item.id ? "page" : undefined}
-                onClick={(event) => {
-                  event.preventDefault();
-                  go(item.id);
-                }}
-              >
-                {item.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <form method="post" action="/auth/logout" className="account">
-          <span title={me.user.email}>{me.user.name}</span>
-          <button type="submit">Sign out</button>
-        </form>
-      </nav>
-
-      <div className="stage">
-        <div className={page === "map" ? "map" : "map hidden"}>
-          <GraphView
-            ref={graph}
-            version={version}
-            selected={selected}
-            highlighted={highlighted}
-            onSelect={(id) => (id ? open(id) : (setSelected(null), setDraftPath(null)))}
-            onStats={setStats}
-          />
-          <div className="map-top">
-            <Search onResults={(ids) => setHighlighted(new Set(ids))} onOpen={open} onCreate={(path) => void openPath(path)} />
-          </div>
-          <div className="map-foot">
-            <span>
-              {stats.nodes.toLocaleString()} notes, {stats.edges.toLocaleString()} links
-              {stats.laying && ", arranging the map…"}
-            </span>
-            <button onClick={() => graph.current?.relayout()} disabled={stats.laying || stats.nodes < 2}>
-              Rearrange
-            </button>
-            <button onClick={() => (setSelected(null), setDraftPath("Untitled"))}>New note</button>
-          </div>
-          {stats.nodes === 0 && !panelOpen && (
-            <div className="empty">
-              <h2>An empty map</h2>
-              <p>Import your Obsidian vault, connect an AI app to start saving notes, or write the first one yourself.</p>
-              <div className="empty-actions">
-                <button className="primary" onClick={() => go("import")}>
-                  Import a vault
-                </button>
-                <button onClick={() => go("connect")}>Connect an app</button>
-              </div>
-            </div>
-          )}
-        </div>
-        {page === "connect" && <ConnectPage me={me} />}
-        {page === "import" && <ImportPage onDone={refresh} />}
-        {page === "trash" && <TrashPage onChanged={refresh} />}
-        {page === "activity" && <ActivityPage onOpen={open} />}
+        </header>
+        <nav className="dock" aria-label="Main">
+          <ul>
+            {PAGES.map((item) => (
+              <li key={item.id}>
+                <a
+                  href={item.path}
+                  aria-current={page === item.id ? "page" : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    go(item.id);
+                  }}
+                >
+                  <Icon name={item.icon} />
+                  <span className="label-long">{item.label}</span>
+                  <span className="label-short">{item.short}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
+
+      {page !== "map" && (
+        <div className="sheet page-sheet">
+          {page === "connect" && <ConnectPage me={me} />}
+          {page === "import" && <ImportPage onDone={refresh} />}
+          {page === "trash" && <TrashPage onChanged={refresh} />}
+          {page === "activity" && <ActivityPage onOpen={open} />}
+        </div>
+      )}
 
       {panelOpen && (
         <NotePanel

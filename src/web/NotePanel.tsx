@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type Note } from "./api";
 import { Editor } from "./Editor";
+import { Icon } from "./Icons";
 
 interface Props {
   noteId: string | null;
@@ -82,7 +83,8 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
   if (!path) return null;
 
   return (
-    <aside className="panel" aria-label={`Note ${path}`}>
+    <aside className="panel sheet" aria-label={`Note ${path}`}>
+      <span className="grabber" aria-hidden="true" />
       <header className="panel-head">
         {renaming === null ? (
           <h2 className="note-title" title={path}>
@@ -104,8 +106,8 @@ export function NotePanel({ noteId, draftPath, onOpen, onOpenPath, onClose, onCh
             </button>
           </form>
         )}
-        <button className="icon" onClick={onClose} aria-label="Close note">
-          ×
+        <button className="icon" onClick={onClose} aria-label="Close note" title="Close">
+          <Icon name="close" />
         </button>
       </header>
 

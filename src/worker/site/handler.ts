@@ -1,8 +1,10 @@
 import { hosts } from "../config";
 import { SITE_CSP, landingPage, privacyPage, termsPage } from "./pages";
 
-/** Brand files the site may serve from the static assets; nothing else of the app is exposed here. */
-const BRAND_FILES = new Set(["/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png"]);
+/** Static files the site may serve: the brand files and the landing map script. Nothing else of the app is exposed here. */
+const SITE_FILES = new Set(["/site.js", "/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png"]);
+
+const PAGE_CACHE = "public, max-age=300";
 
 function html(body: string, status = 200): Response {
   return new Response(body, {
@@ -13,7 +15,7 @@ function html(body: string, status = 200): Response {
       "x-content-type-options": "nosniff",
       "referrer-policy": "strict-origin-when-cross-origin",
       "x-frame-options": "DENY",
-      "cache-control": "public, max-age=300",
+      "cache-control": PAGE_CACHE,
     },
   });
 }
@@ -27,10 +29,11 @@ export async function handleSite(request: Request, env: Env): Promise<Response> 
   if (path === "/privacy") return html(privacyPage());
   if (path === "/terms") return html(termsPage(appOrigin));
   if (path === "/favicon.ico") return Response.redirect(new URL("/favicon-32.png", request.url).toString(), 301);
-  if (BRAND_FILES.has(path)) {
+  if (SITE_FILES.has(path)) {
     const asset = await env.ASSETS.fetch(request);
     const response = new Response(asset.body, asset);
-    response.headers.set("cache-control", "public, max-age=86400");
+    // The script changes with the page markup, so it expires with the page; brand files rarely change.
+    response.headers.set("cache-control", path === "/site.js" ? PAGE_CACHE : "public, max-age=86400");
     response.headers.set("x-content-type-options", "nosniff");
     return response;
   }

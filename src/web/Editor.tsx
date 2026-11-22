@@ -15,7 +15,7 @@ interface Props {
 }
 
 const theme = EditorView.theme({
-  "&": { height: "100%", fontSize: "15px", backgroundColor: "transparent", color: "var(--ink)" },
+  "&": { height: "100%", fontSize: "16px", backgroundColor: "transparent", color: "var(--ink)" },
   ".cm-scroller": { fontFamily: "var(--font-text)", lineHeight: "1.65" },
   ".cm-content": { padding: "12px 0", caretColor: "var(--ink)" },
   ".cm-gutters": { display: "none" },

@@ -11,9 +11,13 @@ export function SignIn() {
   return (
     <main className="signin">
       <div className="signin-card">
+        <div className="signin-brand">
+          <img src="/logo.svg" alt="" width="44" height="44" />
+          <span className="beta-tag">Beta</span>
+        </div>
         <h1>Second Brain</h1>
-        <p>Your notes, linked into one map, and available to every AI app you use.</p>
-        <a className="button primary" href={`/auth/login?next=${next}`}>
+        <p>Your notes, linked into one map, and available to every AI app and agent you use.</p>
+        <a className="button primary wide" href={`/auth/login?next=${next}`}>
           Sign in with Google
         </a>
         <p className="muted">Private beta. Ask for access if your account is not on the list yet.</p>
@@ -88,10 +92,10 @@ export function ConnectPage({ me }: { me: Me }) {
 
   return (
     <main className="page connect">
-      <h1>Connect your AI apps</h1>
+      <h1>Connect any AI app or agent</h1>
       <p className="lede">
-        Connect Claude, ChatGPT, Cursor or any other app that supports MCP. It can then search your notes, read them and save new ones, but
-        only in the workspace you choose, and it can never delete anything.
+        Chat apps, code editors and terminal agents, on any device, all connect with the same address. Once connected, an app can search
+        your notes, read them and save new ones, but only in the workspace you choose, and it can never delete anything.
       </p>
 
       <h2>Your connection address</h2>
@@ -108,7 +112,7 @@ export function ConnectPage({ me }: { me: Me }) {
         <li>Choose Connect. The app now has Second Brain tools, and it shows up under Connected apps at the bottom of this page.</li>
       </ol>
 
-      <h2 id="apps-heading">Steps for your app</h2>
+      <h2 id="apps-heading">Pick your app</h2>
       <div className="app-tabs" role="tablist" aria-labelledby="apps-heading">
         {guides.map((item) => (
           <button
@@ -120,7 +124,8 @@ export function ConnectPage({ me }: { me: Me }) {
             className={item.id === guide.id ? "active" : undefined}
             onClick={() => choose(item.id)}
           >
-            {item.name}
+            <strong>{item.name}</strong>
+            <span>{item.where}</span>
           </button>
         ))}
       </div>
@@ -167,7 +172,7 @@ export function ConnectPage({ me }: { me: Me }) {
       <dl className="explain">
         <dt>The app says it cannot connect or finds no server</dt>
         <dd>
-          Check the address is exactly <code>{url}</code>, with https and nothing after it. Choose the HTTP or Streamable HTTP type if the app
+          Check the address is exactly <code>{url}</code>, including <code>/mcp</code> at the end. Choose the HTTP or Streamable HTTP type if the app
           asks, not SSE.
         </dd>
         <dt>"This account is not on the list yet"</dt>
