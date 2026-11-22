@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignSlugs, composeSkill, isSkillPath, parseSkill, parseSkillText } from "../../src/worker/lib/skills";
+import { assignSlugs, composeSkill, isSkillPath, parseSkill, parseSkillText, skillNotePath } from "../../src/worker/lib/skills";
 
 describe("isSkillPath", () => {
   it("is true for the Skills folder and anything under it, in any letter case", () => {
@@ -90,5 +90,20 @@ describe("assignSlugs", () => {
       parseSkill("Skills/Code-review!", "x"),
     ];
     expect(assignSlugs(skills).map((skill) => skill.slug)).toEqual(["writing-blog-post", "code-review", "other-code-review", "code-review-2"]);
+  });
+});
+
+describe("skillNotePath", () => {
+  it("puts a skill in the Skills folder, inside its bundle when it has one", () => {
+    expect(skillNotePath({ name: "Blog post", bundle: "" })).toBe("Skills/Blog post");
+    expect(skillNotePath({ name: "Blog post", bundle: " Writing / Social " })).toBe("Skills/Writing/Social/Blog post");
+  });
+
+  it("turns characters a note path cannot hold into spaces, and a slash in the name into a dash", () => {
+    expect(skillNotePath({ name: "PR #12 [draft] | a/b ^x", bundle: "" })).toBe("Skills/PR 12 draft a-b x");
+  });
+
+  it("is null when the name is empty after cleaning", () => {
+    expect(skillNotePath({ name: " #[] ", bundle: "Writing" })).toBeNull();
   });
 });

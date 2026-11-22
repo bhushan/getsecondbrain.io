@@ -356,7 +356,7 @@ button.chip.missing { border-style: dashed; color: var(--muted-foreground); }
     position: fixed; z-index: 7; left: 0; right: 0; bottom: 0; height: var(--tabs); padding: 4px 4px var(--safe-bottom);
     background: var(--shell); border-top: 1px solid var(--border);
   }
-  .dock ul { grid-template-columns: repeat(5, minmax(0, 1fr)); height: 100%; gap: 0; }
+  .dock ul { grid-template-columns: repeat(6, minmax(0, 1fr)); height: 100%; gap: 0; }
   .dock a {
     flex-direction: column; justify-content: center; gap: 2px; width: auto; height: 100%; min-height: 44px; padding: 0;
     font-size: 11px; border: 0; border-radius: 12px;

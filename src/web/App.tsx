@@ -5,12 +5,13 @@ import { connectGuides } from "./connectGuides";
 import { type GraphHandle, GraphView } from "./GraphView";
 import { Icon, type IconName } from "./Icons";
 import { NotePanel } from "./NotePanel";
-import { ActivityPage, ConnectPage, ImportPage, SignIn, TrashPage } from "./pages";
+import { ActivityPage, ConnectPage, ImportPage, SignIn, SkillsPage, TrashPage } from "./pages";
 import { Search } from "./Search";
 
-type Page = "map" | "connect" | "import" | "trash" | "activity";
+type Page = "map" | "skills" | "connect" | "import" | "trash" | "activity";
 const PAGES: { id: Page; label: string; short: string; icon: IconName; path: string }[] = [
   { id: "map", label: "Map", short: "Map", icon: "map", path: "/" },
+  { id: "skills", label: "Skills", short: "Skills", icon: "skills", path: "/skills" },
   { id: "connect", label: "Connect apps", short: "Connect", icon: "connect", path: "/connect" },
   { id: "import", label: "Import", short: "Import", icon: "import", path: "/import" },
   { id: "activity", label: "Activity", short: "Activity", icon: "activity", path: "/activity" },
@@ -304,6 +305,7 @@ export function App() {
 
       {page !== "map" && (
         <div className="sheet page-sheet">
+          {page === "skills" && <SkillsPage onChanged={refresh} />}
           {page === "connect" && <ConnectPage me={me} />}
           {page === "import" && <ImportPage onDone={refresh} />}
           {page === "trash" && <TrashPage onChanged={refresh} />}

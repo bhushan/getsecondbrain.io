@@ -55,6 +55,14 @@ export function composeSkill(skill: SkillFields): string {
   return `---\nname: ${yamlValue(skill.name)}\ndescription: ${yamlValue(skill.description)}\n---\n\n${skill.instructions.trim()}\n`;
 }
 
+/** Where a skill from the form is saved: `Skills/<bundle>/<name>`, or null if the name is unusable. */
+export function skillNotePath(skill: { name: string; bundle: string }): string | null {
+  const name = cleanSegment(skill.name.replace(/\//g, "-"));
+  if (!name) return null;
+  const bundle = skill.bundle.split("/").map(cleanSegment).filter(Boolean);
+  return [SKILLS_FOLDER, ...bundle, name].join("/");
+}
+
 /** Gives each skill a unique name safe for MCP prompts, in the order given (callers sort by path). */
 export function assignSlugs<T extends Skill>(skills: T[]): (T & { slug: string })[] {
   const taken = new Set<string>();
@@ -100,6 +108,12 @@ function unquote(value: string): string {
 function yamlValue(value: string): string {
   // Always double-quoted, so a colon, quote or leading symbol never changes the meaning.
   return `"${value.replace(/\s+/g, " ").trim().replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/** A path segment without the characters note paths refuse; empty when nothing usable is left. */
+function cleanSegment(value: string): string {
+  const clean = value.replace(/[\u0000-\u001f\[\]|#^]/g, " ").replace(/\s+/g, " ").trim();
+  return clean === "." || clean === ".." ? "" : clean;
 }
 
 function firstLine(instructions: string): string {
