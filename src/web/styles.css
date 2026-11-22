@@ -504,6 +504,19 @@ button.chip.missing { border-style: dashed; color: var(--muted-foreground); }
 .editor .cm-line.cm-task-done { color: var(--muted-foreground); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--muted-foreground) 60%, transparent); }
 /* Frontmatter stays plain source in a quiet block, never read as a heading. */
 .editor .cm-line.cm-frontmatter { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; color: var(--muted-foreground); background: color-mix(in oklab, var(--muted) 55%, transparent); padding-left: 12px; }
+/* Tables: drawn as a table off the cursor, raw monospace markdown while it is being edited.
+   A wide table scrolls inside its own box (width 0 plus min-width keeps it from widening the editor),
+   and the editor's wrapping rules are reset so long words scroll instead of breaking. Side margins match a line's padding;
+   the vertical space is padding, because CodeMirror does not measure a block widget's vertical margins. */
+.editor .cm-table-wrap {
+  width: 0; min-width: calc(100% - 8px); margin: 0 2px 0 6px; padding: 6px 0 12px; overflow-x: auto;
+  white-space: normal; overflow-wrap: normal; word-break: normal; cursor: text;
+}
+.editor .cm-table { border-collapse: collapse; font-size: 14px; line-height: 1.5; }
+.editor .cm-table th, .editor .cm-table td { min-width: 6ch; padding: 6px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.editor .cm-table th { background: var(--muted); font-weight: 600; }
+.editor .cm-table .cm-inline-code { white-space: nowrap; }
+.editor .cm-line.cm-table-line { font-family: var(--font-mono); font-size: 13px; }
 .editor .cm-line.cm-frontmatter, .editor .cm-line.cm-frontmatter * { font-size: 12.5px !important; font-weight: 400 !important; letter-spacing: 0 !important; color: var(--muted-foreground); }
 
 @media (max-width: 1099px) {
