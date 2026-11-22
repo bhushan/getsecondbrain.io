@@ -175,3 +175,9 @@ export const TRY_PROMPTS = [
   "What notes are linked to \"Inbox/First note\" in my Second Brain?",
   "Add today's decisions to the end of my note \"Inbox/First note\".",
 ];
+
+/** Prompts that use the skill library from a connected app. */
+export const SKILL_PROMPTS = [
+  "List my skills in Second Brain.",
+  "Use my Second Brain skill \"Meeting notes\" on the notes I just pasted.",
+];

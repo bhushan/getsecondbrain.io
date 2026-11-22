@@ -23,6 +23,14 @@ describe("public site on the www host", () => {
     expect(html).toContain('class="relay"');
   });
 
+  it("explains skills: written once by the user, used by every connected app", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    expect(html).toContain('<section id="skills"');
+    expect(html).toContain('href="/#skills"');
+    expect(html).toContain("use_skill");
+    expect(html).toMatch(/<summary>[^<]*skill[^<]*<\/summary>/i);
+  });
+
   it("marks the product as in beta next to the name", async () => {
     const html = await (await exports.default.fetch(`${SITE}/`)).text();
     expect(html).toMatch(/class="brand"[^]*?Second Brain<\/a><span class="beta-tag">Beta<\/span>/);

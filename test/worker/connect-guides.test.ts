@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { connectGuides, MEMORY_RULE } from "../../src/web/connectGuides";
+import { connectGuides, MEMORY_RULE, SKILL_PROMPTS } from "../../src/web/connectGuides";
 
 const URL = "https://mcp.example.test/mcp";
 const guides = connectGuides(URL);
@@ -78,5 +78,11 @@ describe("only-memory setup", () => {
     expect(memorySnippets("claude-code")[0]).toContain(">> ~/.claude/CLAUDE.md");
     expect(memorySnippets("codex")[0]).toContain(">> ~/.codex/AGENTS.md");
     expect(memorySnippets("gemini")[0]).toContain(">> ~/.gemini/GEMINI.md");
+  });
+
+  it("offers prompts that list the user's skills and run one by name", () => {
+    expect(SKILL_PROMPTS.some((prompt) => /list my skills/i.test(prompt))).toBe(true);
+    expect(SKILL_PROMPTS.some((prompt) => /use my .* skill/i.test(prompt))).toBe(true);
+    for (const prompt of SKILL_PROMPTS) expect(prompt).toContain("Second Brain");
   });
 });

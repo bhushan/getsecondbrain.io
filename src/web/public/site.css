@@ -709,6 +709,62 @@ code { font-family: var(--font-mono); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes flow { to { background-position: 12px 12px; } }
 
+/* Skills: one skill note, used by several apps */
+.skills-show {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+.skill-sheet {
+  min-width: 0;
+  padding: 28px;
+  border-radius: var(--radius-xl);
+  border: 1px solid transparent;
+  background: linear-gradient(var(--card), var(--card)) padding-box, var(--aurora) border-box;
+  box-shadow: 0 30px 80px -30px color-mix(in oklab, var(--brand-violet) 45%, transparent);
+}
+.skill-path { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: var(--text-sm); color: var(--muted-foreground); }
+.skill-path::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--aurora); }
+.skill-sheet h3 { margin: 0 0 var(--space-4); font-size: var(--text-2xl); font-weight: 500; letter-spacing: var(--tracking-tight); }
+.skill-when {
+  margin: 0 0 var(--space-4);
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--secondary);
+  color: var(--text-body);
+}
+.skill-when span { display: block; margin-bottom: 2px; font-size: var(--text-xs); color: var(--muted-foreground); }
+.skill-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; color: var(--text-body); }
+.skill-steps li::marker { color: var(--brand-amber); }
+.skill-uses { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.skill-use {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.skill-use p { margin: 0; }
+.skill-use .mini-title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.skill-use .mini-title .app-logo { width: 16px; height: 16px; }
+.skill-use .icon { width: 14px; height: 14px; flex: none; }
+.skill-points {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+.skill-points h3 { margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: 500; letter-spacing: var(--tracking-tight); }
+.skill-points p { margin: 0; color: var(--muted-foreground); }
+
 /* Section surfaces: integrations and the closing call to action */
 .surface {
   position: relative;
@@ -986,6 +1042,8 @@ code { font-family: var(--font-mono); }
   .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .connect { grid-template-columns: 1fr; }
   .relay { grid-template-columns: 1fr; max-width: 32rem; margin: 0 auto; }
+  .skills-show { grid-template-columns: 1fr; max-width: 36rem; margin: 0 auto; }
+  .skill-points { grid-template-columns: 1fr; max-width: 36rem; margin-left: auto; margin-right: auto; gap: var(--space-4); }
   .relay-col,
   .relay-col.right { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 32px; }
   .relay-col.right { grid-template-rows: 32px auto; }
@@ -1025,6 +1083,7 @@ code { font-family: var(--font-mono); }
   .app-card { padding: 16px; }
   .rule { padding: 24px; }
   .how-card { padding: 24px 20px 0; }
+  .skill-sheet { padding: 22px 18px; }
   .surface { padding-left: 16px; padding-right: 16px; }
   .connect { padding: 16px; }
   .window-bar { gap: var(--space-2); padding: 8px; }

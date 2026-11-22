@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Connection, type Me } from "../api";
-import { connectGuides, TRY_PROMPTS } from "../connectGuides";
+import { connectGuides, SKILL_PROMPTS, TRY_PROMPTS } from "../connectGuides";
 import { AppMark } from "./AppMark";
 import { ConnectedApps } from "./ConnectedApps";
 import { CopyButton } from "./CopyButton";
@@ -17,7 +17,7 @@ function readGuide(): string {
   }
 }
 
-export function ConnectPage({ me }: { me: Me }) {
+export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const load = () => void api.connections().then(({ connections }) => setConnections(connections));
   useEffect(load, []);
@@ -166,6 +166,29 @@ export function ConnectPage({ me }: { me: Me }) {
           ))}
         </ul>
         <p className="muted">Notes an app saves appear on the map straight away, and every action is listed under Activity.</p>
+      </section>
+
+      <section className="pg-section" aria-labelledby="skills-title">
+        <h2 id="skills-title">Use your skills</h2>
+        <p className="muted">
+          Every connected app can also use the skills you write on the Skills page: instructions such as how to write a post in your voice or how you
+          review code. Apps follow the skill that fits a task, or the one you name, but can never change a skill.
+        </p>
+        <ul className="prompt-list">
+          {SKILL_PROMPTS.map((prompt) => (
+            <li key={prompt}>
+              <span>{prompt}</span>
+              <CopyButton text={prompt} className="ghost btn-sm" />
+            </li>
+          ))}
+        </ul>
+        <p className="muted">
+          An app connected before you added a skill sees it the next time it looks. Apps that offer skills in their menu, such as Claude Code, list
+          new ones in a new session.{" "}
+          <button type="button" className="link" onClick={onSkills}>
+            Open the Skills page
+          </button>
+        </p>
       </section>
 
       <section className="pg-section" aria-labelledby="help-title">

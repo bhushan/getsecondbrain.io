@@ -306,7 +306,7 @@ export function App() {
       {page !== "map" && (
         <div className="sheet page-sheet">
           {page === "skills" && <SkillsPage onChanged={refresh} />}
-          {page === "connect" && <ConnectPage me={me} />}
+          {page === "connect" && <ConnectPage me={me} onSkills={() => go("skills")} />}
           {page === "import" && <ImportPage onDone={refresh} />}
           {page === "trash" && <TrashPage onChanged={refresh} />}
           {page === "activity" && <ActivityPage onOpen={open} />}

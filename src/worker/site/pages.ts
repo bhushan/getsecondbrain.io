@@ -90,6 +90,7 @@ const brand = () =>
 
 const NAV_LINKS: [string, string][] = [
   ["how", "How it works"],
+  ["skills", "Skills"],
   ["integrations", "Integrations"],
   ["security", "Security"],
   ["faq", "FAQ"],
@@ -138,6 +139,7 @@ const FAQ: [string, string][] = [
   ["Does it work on my phone?", "Yes. Second Brain lives online, so a connected app can reach your notes wherever it runs: in the browser, in desktop and phone apps, in your editor and in the terminal. In Claude, a connector you add on the web also works in the mobile app."],
   ["Do I need to install anything?", "No. You add one address to each app. Chat apps take it in their settings, and terminal agents add it with one command. Each guide in Second Brain shows exactly where it goes."],
   ["Can a connected app delete my notes?", "No. Apps can search, read and, if you allow it, save notes. Only you can move a note to the trash, and you can restore it from there."],
+  ["What are skills?", "Instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps can use skills but can never change them."],
   ["Can I bring my Obsidian vault?", "Yes. Pick the vault folder and every note comes in with its links, tags and folders. Importing again skips notes that have not changed."],
   ["Who can read my notes?", "You, and the apps you connect to that workspace. Notes are encrypted at rest and in transit, but not end to end, because Second Brain has to read them to search and to answer your apps. Your notes are never used to train AI models."],
   ["How do I get access?", `Second Brain is in private beta and access is by invitation. Write to <a href="mailto:${CONTACT}">${CONTACT}</a> to ask for a place.`],
@@ -270,6 +272,30 @@ const RULES: [IconName, string, string][] = [
   ["ban", "Never used to train AI models", "Your notes are used only to run Second Brain for you. They are never sold and never used to train AI models."],
 ];
 
+const SKILL_USES: [string, string, string, string][] = [
+  ["claude-code", "Claude Code", "draft a post about the launch", "Followed Blog post: opened with the point, three short sections."],
+  ["chatgpt", "ChatGPT", "use my blog post skill on these notes", "Wrote it in your voice, ending with one thing to try today."],
+  ["cursor", "Cursor", "write up this release for the blog", "Picked your Blog post skill for this."],
+];
+
+const skillsShowcase = () => `<div class="skills-show">
+<article class="skill-sheet" aria-label="A skill saved in Second Brain">
+<p class="skill-path">Skills / Writing / Blog post</p>
+<h3>Blog post</h3>
+<p class="skill-when"><span>When to use it</span>Write a blog post in my voice. Use when I ask for a post or an article.</p>
+<ol class="skill-steps"><li>Open with the point, not the backstory.</li><li>Short paragraphs, one idea each.</li><li>End with one thing the reader can do today.</li></ol>
+</article>
+<ul class="skill-uses" aria-label="The same skill used in three apps">${SKILL_USES.map(
+  ([id, name, ask, reply]) =>
+    `<li class="skill-use"><p class="mini-title">${logo(id, 16)}${name}</p><p class="term-line"><span class="prompt">›</span> ${ask}</p><p class="tool">${icon("note")}second-brain · use_skill</p><p class="term-line muted">${reply}</p></li>`,
+).join("")}</ul>
+</div>
+<ul class="skill-points">
+<li><h3>Write, paste or bundle</h3><p>Write a skill on the Skills page, paste a SKILL.md you already use, or group skills into bundles like Writing or Code.</p></li>
+<li><h3>Used when it fits</h3><p>Apps see each skill's name and when to use it. They follow the one that fits a task, or the one you ask for.</p></li>
+<li><h3>Only you change them</h3><p>Apps can use your skills but can never write or edit one, so no app can rewrite how the others behave.</p></li>
+</ul>`;
+
 const sectionHead = (eyebrow: string, title: string, intro: string) =>
   `<div class="section-head"><p class="eyebrow">${eyebrow}</p><h2>${title}</h2><p class="intro">${intro}</p></div>`;
 
@@ -329,6 +355,11 @@ ${sectionHead("One memory, many apps", "Save it in one app. Find it in another."
 <p class="app" data-step="6">In Alfama, from your note Trips/Lisbon. You also noted the 28 tram queue is shortest after 10.</p>
 </div></div>
 </div>
+</div></section>
+
+<section id="skills" class="section skills-section"><div class="wrap">
+${sectionHead("Skills", "Teach it once. Every app follows it.", "Write down how you like things done, once. Claude, ChatGPT, Cursor and every other app you connect can use the same skill.")}
+${skillsShowcase()}
 </div></section>
 
 <section id="integrations" class="section"><div class="wrap">
