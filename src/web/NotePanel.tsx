@@ -108,7 +108,12 @@ export const NotePanel = forwardRef<NotePanelHandle, Props>(function NotePanel({
 
   async function rename() {
     if (!note || !renaming?.trim()) return;
-    const result = await api.rename(note.id, renaming.trim());
+    let result: Awaited<ReturnType<typeof api.rename>>;
+    try {
+      result = await api.rename(note.id, renaming.trim());
+    } catch (error) {
+      return setStatus(error instanceof ApiError ? error.message : "Could not rename. Check your connection.");
+    }
     if (result.status === "exists") return setStatus("A note already has that name.");
     setRenaming(null);
     setLoadKey((k) => k + 1);

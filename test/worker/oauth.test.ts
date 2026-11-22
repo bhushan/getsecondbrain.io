@@ -229,6 +229,27 @@ describe("connecting an app", () => {
     expect((await mcp(token, "tools/list")).status).toBe(401);
   });
 
+  it("disconnects every app when the user deletes their account, and leaves other users' apps connected", async () => {
+    const mine = await connect();
+    const theirs = await connect();
+    expect((await mine.who.api("/api/account", { method: "DELETE", body: JSON.stringify({ confirm: mine.who.user.email }) })).status).toBe(200);
+    expect((await mcp(mine.token, "tools/list")).status).toBe(401);
+    expect((await mcp(theirs.token, "tools/list")).status).toBe(200);
+  });
+
+  it("tells an app plainly when the workspace has hit a limit", async () => {
+    const { token, who } = await connect();
+    await env.WORKSPACE.getByName(who.workspaceId).setLimits({ writesPerDay: 0 });
+    for (const [name, args] of [
+      ["save_note", { path: "New", body: "x" }],
+      ["append_to_note", { path: "Log", text: "x" }],
+    ] as const) {
+      const result = await callTool(token!, name, args);
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toMatch(/limit/i);
+    }
+  });
+
   it("stops working if the user leaves the workspace", async () => {
     const { token, who } = await connect();
     await env.DB.prepare("DELETE FROM memberships WHERE user_id = ?").bind(who.user.id).run();

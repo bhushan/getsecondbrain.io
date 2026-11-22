@@ -361,7 +361,7 @@ p { text-wrap: pretty; }
   box-shadow: var(--shadow-lg), 0 0 80px -20px rgba(109, 92, 255, 0.5), 0 0 0 6px color-mix(in oklab, var(--foreground) 3%, transparent);
 }
 .window::after {
-  content: ;
+  content: "";
   position: absolute;
   inset: 41px 0 0;
   background: radial-gradient(rgba(150, 140, 255, 0.22) 1px, transparent 1.6px) 0 0 / 26px 26px;
@@ -372,7 +372,7 @@ p { text-wrap: pretty; }
 .window-bar { position: relative; z-index: 1; }
 .map {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: block;
   width: 100%;
   height: auto;
@@ -380,6 +380,29 @@ p { text-wrap: pretty; }
 }
 .map text { font: 500 15px var(--font-sans); fill: #c9c6e8; }
 .map .saved-label { fill: #fff; font-weight: 600; }
+/* The brain: hundreds of neurons behind the notes. Still and faint without the script; site.js hides
+   this copy and draws it live on the canvas below the map. */
+.brain { opacity: 0; animation: fade 1.6s ease-out 0.1s forwards; }
+.brain-links { fill: none; stroke: rgba(150, 140, 255, 0.11); stroke-width: 0.8; }
+.bn { opacity: 0.75; }
+.b-violet { fill: #a39bff; }
+.b-sky { fill: #7dbdf0; }
+.b-fuchsia { fill: #e49af3; }
+.b-amber { fill: #ffc06b; }
+.b-teal { fill: #6fd0b2; }
+.map.live .brain { display: none; }
+.brain-canvas {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.4s ease-out;
+}
+.brain-canvas.on { opacity: 1; }
 .e {
   fill: none;
   stroke: rgba(150, 140, 255, 0.16);

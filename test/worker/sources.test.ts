@@ -249,6 +249,19 @@ describe("syncing Granola notes", () => {
     expect(await note(who, "Meetings/2026-11-20 Pricing")).not.toBeNull();
   });
 
+  it("stops at a workspace limit with a reason, and syncs the rest once there is room", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    fake.add(meeting("m-1", "Roadmap"));
+    await connect(who);
+    await env.WORKSPACE.getByName(who.workspaceId).setLimits({ writesPerDay: 0 });
+    const refused = await sync(who);
+    expect(refused).toMatchObject({ status: "error" });
+    expect(String(refused.error)).toMatch(/limit/i);
+    await env.WORKSPACE.getByName(who.workspaceId).setLimits({ writesPerDay: 100 });
+    expect(await sync(who)).toMatchObject({ status: "ok", created: 1 });
+  });
+
   it("keeps meeting notes after Granola stops sharing them", async () => {
     const fake = fakeGranola();
     const who = await signIn();

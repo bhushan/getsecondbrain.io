@@ -1,3 +1,4 @@
+import { signupOpen } from "../control/accounts";
 import { hosts } from "../config";
 import { llmsTxt, siteRobots, sitemap } from "./discovery";
 import { SITE_CSP, landingPage, notFoundPage, privacyPage, termsPage } from "./pages";
@@ -33,13 +34,13 @@ export async function handleSite(request: Request, env: Env): Promise<Response> 
   if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
   const path = new URL(request.url).pathname;
   const { appOrigin, mcpResource } = hosts(env);
-  const origins = { app: appOrigin, site: new URL(env.SITE_ORIGIN).origin };
+  const origins = { app: appOrigin, site: new URL(env.SITE_ORIGIN).origin, open: signupOpen(env) };
   if (path === "/") return html(landingPage(origins, mcpResource));
   if (path === "/privacy") return html(privacyPage(origins));
   if (path === "/terms") return html(termsPage(origins));
   if (path === "/robots.txt") return textFile(siteRobots(origins.site), "text/plain");
   if (path === "/sitemap.xml") return textFile(sitemap(origins.site), "application/xml");
-  if (path === "/llms.txt") return textFile(llmsTxt(origins.site, appOrigin), "text/markdown");
+  if (path === "/llms.txt") return textFile(llmsTxt(origins.site, appOrigin, origins.open), "text/markdown");
   if (path === "/favicon.ico") return Response.redirect(new URL("/favicon-32.png", request.url).toString(), 301);
   if (SITE_FILES.has(path) || SITE_FOLDERS.test(path)) {
     const asset = await env.ASSETS.fetch(request);

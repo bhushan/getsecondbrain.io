@@ -22,7 +22,9 @@
   // Daily job: erase workspaces deleted more than 30 days ago. Hourly job: sync sources (Granola).
   "triggers": { "crons": ["17 3 * * *", "41 * * * *"] },
   // Local development: two loopback hostnames stand in for the app and MCP hosts.
+  // SIGNUP: "open" lets any verified Google account in; anything else allows only ALLOWED_EMAILS.
   "vars": {
+    "SIGNUP": "invite",
     "APP_ORIGIN": "http://localhost:8787",
     "MCP_RESOURCE": "http://127.0.0.1:8787/mcp",
     "SITE_ORIGIN": "http://www.localhost:8787"
@@ -31,10 +33,34 @@
     { "binding": "DB", "database_name": "getsecondbrain-local", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
   ],
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
-  // Secrets, set with `wrangler secret put <NAME> --env production`:
+  // Secrets, set with `wrangler secret put <NAME> --env production` (and again with --env preview):
   //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS (comma-separated),
   //   SOURCES_KEY (32 random bytes, base64: `openssl rand -base64 32`)
   "env": {
+    // Preview: the same Worker on its own hosts, database and token store, for checking a change
+    // before it reaches real users. Invite-only: sign-in is limited to ALLOWED_EMAILS.
+    "preview": {
+      "name": "getsecondbrain-preview",
+      "routes": [
+        { "pattern": "preview-app.getsecondbrain.io", "custom_domain": true },
+        { "pattern": "preview-mcp.getsecondbrain.io", "custom_domain": true },
+        { "pattern": "preview-www.getsecondbrain.io", "custom_domain": true }
+      ],
+      "vars": {
+        "SIGNUP": "invite",
+        "APP_ORIGIN": "https://preview-app.getsecondbrain.io",
+        "MCP_RESOURCE": "https://preview-mcp.getsecondbrain.io/mcp",
+        "SITE_ORIGIN": "https://preview-www.getsecondbrain.io"
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "WORKSPACE", "class_name": "Workspace" }]
+      },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "getsecondbrain-preview", "database_id": "2b3f788e-fa7b-447b-8b25-b496367c98e6", "migrations_dir": "migrations" }
+      ],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "cdedff16c01441ec83612861449cf514" }],
+      "triggers": { "crons": ["17 3 * * *", "41 * * * *"] }
+    },
     "production": {
       "name": "getsecondbrain-production",
       "routes": [
@@ -43,6 +69,7 @@
         { "pattern": "www.getsecondbrain.io", "custom_domain": true }
       ],
       "vars": {
+        "SIGNUP": "invite",
         "APP_ORIGIN": "https://app.getsecondbrain.io",
         "MCP_RESOURCE": "https://mcp.getsecondbrain.io/mcp",
         "SITE_ORIGIN": "https://www.getsecondbrain.io"

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { api, ApiError, type DeletedWorkspace, type Me } from "../api";
+import { api, ApiError, type DeletedWorkspace, type Me, type Usage } from "../api";
 import { PageHeader } from "./PageHeader";
 
 const RESTORE_DAYS = 30;
@@ -23,10 +23,11 @@ export function SettingsPage({
 
   return (
     <main className="page page-settings">
-      <PageHeader title="Settings">Change the name of this workspace, delete it, or bring back one you deleted.</PageHeader>
+      <PageHeader title="Settings">Rename or delete this workspace, see its usage, bring back one you deleted, or delete your account.</PageHeader>
       <RenameWorkspace key={workspace.id} name={workspace.name} onRenamed={onRenamed} />
       <DeleteWorkspace key={`delete-${workspace.id}`} name={workspace.name} only={only} onDeleted={onDeleted} />
       <RecentlyDeleted onRestored={onRestored} />
+      <WorkspaceUsage key={`usage-${workspace.id}`} />
 
       <section className="pg-section" aria-labelledby="account-title">
         <h2 id="account-title">Account</h2>
@@ -42,7 +43,100 @@ export function SettingsPage({
           </form>
         </div>
       </section>
+      <DeleteAccount email={me.user.email} />
     </main>
+  );
+}
+
+const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toLocaleString(undefined, { maximumFractionDigits: bytes < 10 * 1024 * 1024 ? 1 : 0 })} MB`;
+
+/** How much of its fair-use limits this workspace uses. */
+function WorkspaceUsage() {
+  const [usage, setUsage] = useState<Usage | null>(null);
+  useEffect(() => void api.usage().then(setUsage, () => setUsage(null)), []);
+  if (!usage) return null;
+  const rows: [string, number, number, string, string][] = [
+    ["Notes", usage.notes, usage.limits.notes, usage.notes.toLocaleString(), usage.limits.notes.toLocaleString()],
+    ["Storage", usage.bytes, usage.limits.bytes, megabytes(usage.bytes), megabytes(usage.limits.bytes)],
+    ["Saves today", usage.writesToday, usage.limits.writesPerDay, usage.writesToday.toLocaleString(), usage.limits.writesPerDay.toLocaleString()],
+  ];
+  return (
+    <section className="pg-section" aria-labelledby="usage-title">
+      <h2 id="usage-title">Usage</h2>
+      <p className="muted">Fair-use limits for this workspace. Trashed notes count until you delete them forever. Saves reset at midnight UTC.</p>
+      <ul className="settings-card usage-list">
+        {rows.map(([label, used, limit, usedText, limitText]) => (
+          <li key={label}>
+            <span className="usage-label">{label}</span>
+            <meter min={0} max={limit || 1} value={Math.min(used, limit)} high={limit * 0.8} optimum={0} aria-label={`${label}: ${usedText} of ${limitText}`} />
+            <span className="usage-value">
+              {usedText} <span className="muted">of {limitText}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DeleteAccount({ email }: { email: string }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const matches = typed.trim().toLowerCase() === email.toLowerCase();
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!matches) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteAccount(typed.trim());
+      location.assign("/");
+    } catch (cause) {
+      setError(problem(cause, "Could not delete your account. Try again."));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="pg-section" aria-labelledby="delete-account-title">
+      <h2 id="delete-account-title">Delete your account</h2>
+      <div className="settings-card settings-danger">
+        <p>
+          This erases every workspace you own, with all their notes, revisions and skills, disconnects every app and signs you out. It happens at once and
+          cannot be undone. Workspaces other people own stay as they are.
+        </p>
+        {!open ? (
+          <button type="button" className="danger" onClick={() => setOpen(true)}>
+            Delete account
+          </button>
+        ) : (
+          <form className="settings-confirm" onSubmit={(event) => void submit(event)}>
+            <label className="field">
+              <span>
+                Type <strong>{email}</strong> to confirm
+              </span>
+              <input value={typed} autoFocus autoComplete="off" spellCheck={false} onChange={(event) => setTyped(event.target.value)} />
+            </label>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="settings-actions">
+              <button type="button" onClick={() => (setOpen(false), setTyped(""), setError(null))} disabled={busy}>
+                Cancel
+              </button>
+              <button type="submit" className="danger" disabled={!matches || busy}>
+                Delete account for good
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </section>
   );
 }
 

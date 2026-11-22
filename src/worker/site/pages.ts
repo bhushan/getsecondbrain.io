@@ -5,6 +5,8 @@
  * complete without JavaScript; the script only adds motion and a copy button.
  */
 
+import { DEFAULT_LIMITS, MAX_WORKSPACES } from "../workspace/limits";
+import { brainSvg } from "./brain";
 import { appLogo } from "../../web/appLogos";
 import { connectGuides } from "../../web/connectGuides";
 
@@ -26,6 +28,8 @@ export const SITE_CSP = [
 export interface Origins {
   app: string;
   site: string;
+  /** Whether anyone can sign up (the SIGNUP var), so the copy says how to get in. */
+  open: boolean;
 }
 
 interface Page {
@@ -120,7 +124,7 @@ const footer = (appOrigin: string) => `<footer class="footer"><div class="wrap">
 <div><h2>Legal</h2><ul><li><a href="/privacy">Privacy policy</a></li><li><a href="/terms">Terms of service</a></li></ul></div>
 <div><h2>Contact</h2><ul><li><a href="mailto:${CONTACT}">${CONTACT}</a></li><li><a href="${appOrigin}/">Sign in</a></li></ul></div>
 </div>
-<p class="copyright"><span>© 2026 Second Brain. Private beta.</span><span class="signature">Crafted with love <svg class="heart" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span><span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span></p>
+<p class="copyright"><span>© 2026 Second Brain. Beta.</span><span class="signature">Crafted with love <svg class="heart" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span><span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span></p>
 </div></footer>`;
 
 /** The apps with a setup guide in the app, so the site and the guides never disagree. */
@@ -144,7 +148,8 @@ const deviceRow = () => `<ul class="devices" aria-label="Where it works">${DEVIC
 
 export const listInWords = (names: string[]) => `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 
-export const FAQ: [string, string][] = [
+/** The FAQ. The last answer depends on whether sign-up is open. */
+export const faq = (open: boolean): [string, string][] => [
   ["Which apps can connect?", `Any app or agent that supports MCP connectors. There are step-by-step guides for ${listInWords(APP_NAMES)}.`],
   ["Does it work on my phone?", "Yes. Second Brain lives online, so a connected app can reach your notes wherever it runs: in the browser, in desktop and phone apps, in your editor and in the terminal. In Claude, a connector you add on the web also works in the mobile app."],
   ["Do I need to install anything?", "No. You add one address to each app. Chat apps take it in their settings, and terminal agents add it with one command. Each guide in Second Brain shows exactly where it goes."],
@@ -152,7 +157,9 @@ export const FAQ: [string, string][] = [
   ["What are skills?", "Instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps can use skills but can never change them."],
   ["Can I bring my Obsidian vault?", "Yes. Pick the vault folder and every note comes in with its links, tags and folders. Importing again skips notes that have not changed."],
   ["Who can read my notes?", "You, and the apps you connect to that workspace. Notes are encrypted at rest and in transit, but not end to end, because Second Brain has to read them to search and to answer your apps. Your notes are never used to train AI models."],
-  ["How do I get access?", `Second Brain is in private beta and access is by invitation. Write to <a href="mailto:${CONTACT}">${CONTACT}</a> to ask for a place.`],
+  open
+    ? ["How do I start?", `Sign in with Google. You get your own empty workspace; connect an AI app or import an Obsidian vault. Each workspace has fair-use limits: up to ${DEFAULT_LIMITS.notes.toLocaleString("en-US")} notes and ${DEFAULT_LIMITS.writesPerDay.toLocaleString("en-US")} saves a day. You can delete your account at any time in Settings.`]
+    : ["How do I get access?", `Second Brain is in private beta and access is by invitation. Write to <a href="mailto:${CONTACT}">${CONTACT}</a> to ask for a place.`],
 ];
 
 /** Text without markup, for structured data and llms.txt. */
@@ -194,7 +201,7 @@ function landingStructuredData(origins: Origins) {
       },
       {
         "@type": "FAQPage",
-        mainEntity: FAQ.map(([question, answer]) => ({
+        mainEntity: faq(origins.open).map(([question, answer]) => ({
           "@type": "Question",
           name: question,
           acceptedAnswer: { "@type": "Answer", text: plainText(answer) },
@@ -295,8 +302,9 @@ function heroMap(): string {
   const labels = NODES.map((n, i) =>
     n.label ? `<text class="lbl ${i === SAVED ? "late saved-label" : level(i)}" data-for="${i}" x="${n.x + n.r + 10}" y="${n.y + 5}">${n.label}</text>` : "",
   ).join("");
-  return `<svg class="map" viewBox="0 0 1200 600" role="img" aria-label="A glowing network of notes joined by links, with signals travelling along them. A new note saved by an AI app links into it last.">
+  return `<svg class="map" viewBox="0 0 1200 600" role="img" aria-label="A glowing brain of hundreds of linked notes, with signals travelling along the links. A new note saved by an AI app links into it last.">
 <defs><linearGradient id="map-aurora" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#6d5cff"/><stop offset=".55" stop-color="#d946ef"/><stop offset="1" stop-color="#ffb547"/></linearGradient>${gradients}</defs>
+${brainSvg()}
 ${edges}${savedEdges}${halos}${dots}
 <circle class="ring late" data-ring="${SAVED}" cx="${saved.x}" cy="${saved.y}" r="${saved.r}"/>
 <circle class="n saved late" data-i="${SAVED}" cx="${saved.x}" cy="${saved.y}" r="${saved.r}" fill="url(#map-aurora)"/>
@@ -390,7 +398,7 @@ export function landingPage(origins: Origins, mcpResource: string): string {
 <div class="hero-glow" aria-hidden="true"></div>
 ${nav(origins.app)}
 <div class="hero-copy">
-<a class="eyebrow-pill" href="#integrations"><span class="pulse" aria-hidden="true"></span>Private beta. Works with any MCP app${icon("arrow")}</a>
+<a class="eyebrow-pill" href="#integrations"><span class="pulse" aria-hidden="true"></span>${origins.open ? "Open beta" : "Private beta"}. Works with any MCP app${icon("arrow")}</a>
 <h1>One memory for every AI app you use.</h1>
 <p class="lede">Save something in Claude, find it in ChatGPT, Cursor or your terminal. Second Brain keeps your notes as one linked network that every AI app you connect can search, read and add to.</p>
 <div class="actions"><a class="button primary" href="${app}">Open Second Brain</a>
@@ -468,15 +476,20 @@ ${sectionHead("Security", "You stay in charge", "Apps get exactly the access you
 
 <section id="faq" class="section faq"><div class="wrap">
 ${sectionHead("FAQ", "Questions", "If yours is not here, write to us.")}
-<div class="faq-list">${FAQ.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}</div>
+<div class="faq-list">${faq(origins.open).map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}</div>
 </div></section>
 
 <section class="section closing"><div class="wrap">
 <div class="surface cta">
 <div class="surface-glow" aria-hidden="true"></div>
 <h2>Give every AI app the same memory.</h2>
-<p class="intro">Second Brain is in private beta, by invitation.</p>
-<div class="actions"><a class="button primary" href="${app}">Open Second Brain</a><a class="button ghost" href="mailto:${CONTACT}">Ask for an invite</a></div>
+${
+      origins.open
+        ? `<p class="intro">Sign in and try it with your own notes. It takes a minute.</p>
+<div class="actions"><a class="button primary" href="${app}">Sign in with Google</a><a class="button ghost" href="#how">See how it works</a></div>`
+        : `<p class="intro">Second Brain is in private beta, by invitation.</p>
+<div class="actions"><a class="button primary" href="${app}">Open Second Brain</a><a class="button ghost" href="mailto:${CONTACT}">Ask for an invite</a></div>`
+    }
 </div>
 </div></section>
 </main>${footer(origins.app)}`,
@@ -548,10 +561,10 @@ export function privacyPage(origins: Origins): string {
 <p>We use one cookie to keep you signed in and one short-lived cookie during sign-in. We do not use analytics, advertising or tracking cookies.</p>
 
 <h2>How long we keep it</h2>
-<p>Your notes stay until you delete them. Notes you move to the trash can be restored until you delete them forever, which erases the note and its earlier versions. If you delete a workspace, you can restore it for 30 days; after that its notes are erased. If you ask us to delete your account, we delete your notes, workspaces and account details; copies in our provider's recovery backups expire within 30 days.</p>
+<p>Your notes stay until you delete them. Notes you move to the trash can be restored until you delete them forever, which erases the note and its earlier versions. If you delete a workspace, you can restore it for 30 days; after that its notes are erased. When you delete your account in Settings, your notes, workspaces, connected apps and account details are erased at once; copies in our provider's recovery backups expire within 30 days.</p>
 
 <h2>Your choices</h2>
-<p>You can edit or remove your notes, disconnect apps, and ask us for a copy of your data or to delete your account by writing to <a href="mailto:${CONTACT}">${CONTACT}</a>. Depending on where you live, you may have further rights under laws such as the GDPR; we will honour them.</p>
+<p>You can edit or remove your notes, disconnect apps, and delete your account in Settings. To ask for a copy of your data, write to <a href="mailto:${CONTACT}">${CONTACT}</a>. Depending on where you live, you may have further rights under laws such as the GDPR; we will honour them.</p>
 
 <h2>Children</h2>
 <p>Second Brain is not meant for children under 16, and we do not knowingly collect their data.</p>
@@ -571,7 +584,10 @@ export function termsPage(origins: Origins): string {
     `<p>These terms apply when you use Second Brain at <a href="${appOrigin}/">${new URL(appOrigin).host}</a> and through its MCP connector. By using it you agree to them. Questions go to <a href="mailto:${CONTACT}">${CONTACT}</a>.</p>
 
 <h2>The beta</h2>
-<p>Second Brain is in private beta. Features may change, and the service may sometimes be unavailable. Keep your own copy of anything you cannot afford to lose.</p>
+<p>Second Brain is in beta. Features may change, and the service may sometimes be unavailable. Keep your own copy of anything you cannot afford to lose.</p>
+
+<h2>Fair use</h2>
+<p>Each workspace has limits that keep the service fast for everyone: a number of notes, an amount of storage, and saves per day. When a workspace reaches one, saving pauses with a message saying which limit it is; reading, moving notes to the trash and deleting them forever always work. You can own up to ${MAX_WORKSPACES} workspaces.</p>
 
 <h2>Your account</h2>
 <p>You sign in with a Google account and are responsible for what happens under your account, including what the apps you connect do with the permissions you give them.</p>
@@ -586,7 +602,7 @@ export function termsPage(origins: Origins): string {
 <p>AI apps you connect are run by other companies under their own terms. We are not responsible for what they do with the notes you let them read.</p>
 
 <h2>Ending use</h2>
-<p>You can stop using Second Brain at any time and ask us to delete your account. We may end the beta or close an account with reasonable notice, and we will give you a way to get your notes out first unless the law prevents it.</p>
+<p>You can stop using Second Brain at any time and delete your account yourself in Settings. We may end the beta or close an account with reasonable notice, and we will give you a way to get your notes out first unless the law prevents it.</p>
 
 <h2>No warranty</h2>
 <p>The service is provided as it is, without warranties of any kind, to the extent the law allows.</p>

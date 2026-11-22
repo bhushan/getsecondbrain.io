@@ -6,6 +6,7 @@ import { assignSlugs, isSkillPath, parseSkill, SKILLS_FOLDER } from "../lib/skil
 import { sourcesKey } from "../sources/crypto";
 import type { Tokens } from "../sources/granolaClient";
 import { connectGranola, disconnectGranola, type SourceStatus, sourceStatuses, syncGranola, type SyncResult } from "../sources/granolaSync";
+import { DEFAULT_LIMITS, type LimitName, type Limits, type Usage } from "./limits";
 import { MIGRATIONS } from "./schema";
 import type {
   Actor,
@@ -54,6 +55,9 @@ const toMeta = (row: Row): NoteMeta => ({
   createdAt: row.created_at as number,
   updatedAt: row.updated_at as number,
 });
+
+/** The UTC calendar day, for the daily write count. */
+const utcDay = (at: number) => new Date(at).toISOString().slice(0, 10);
 
 const clamp = (value: number, max = MAX_LIMIT) => Math.max(1, Math.min(max, Math.floor(value) || 1));
 
@@ -434,6 +438,61 @@ export class Workspace extends DurableObject<Env> {
     return this.granolaSync;
   }
 
+  // Limits
+
+  /** Raises or lowers this workspace's limits; anything not given keeps its current value. */
+  setLimits(next: Partial<Limits>): Limits {
+    const keys: [keyof Limits, string][] = [["notes", "limit_notes"], ["bytes", "limit_bytes"], ["writesPerDay", "limit_writes"]];
+    for (const [name, key] of keys) {
+      const value = next[name];
+      if (value === undefined) continue;
+      if (!Number.isInteger(value) || value < 0) throw new Error(`${name} must be a whole number, 0 or more`);
+      this.sql.exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", key, String(value));
+    }
+    return this.limits();
+  }
+
+  /** What this workspace uses, next to what it may use. */
+  usage(now = Date.now()): Usage {
+    return { notes: this.noteCount(), bytes: this.sql.databaseSize, writesToday: this.writesToday(now), limits: this.limits() };
+  }
+
+  private limits(): Limits {
+    const read = (key: string, fallback: number) => {
+      const row = this.sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = ?", key).toArray()[0];
+      return row ? Number(row.value) : fallback;
+    };
+    return {
+      notes: read("limit_notes", DEFAULT_LIMITS.notes),
+      bytes: read("limit_bytes", DEFAULT_LIMITS.bytes),
+      writesPerDay: read("limit_writes", DEFAULT_LIMITS.writesPerDay),
+    };
+  }
+
+  private noteCount(): number {
+    return this.sql.exec<{ count: number }>("SELECT COUNT(*) AS count FROM notes").one().count;
+  }
+
+  private writesToday(now: number): number {
+    const rows = this.sql.exec<{ key: string; value: string }>("SELECT key, value FROM meta WHERE key IN ('writes_day', 'writes_count')").toArray();
+    const day = rows.find((row) => row.key === "writes_day")?.value;
+    return day === utcDay(now) ? Number(rows.find((row) => row.key === "writes_count")?.value ?? 0) : 0;
+  }
+
+  /** The limit a save would break, if any. Only saves that change something are checked. */
+  private overLimit(creating: boolean, now: number): LimitName | null {
+    const limits = this.limits();
+    if (this.writesToday(now) >= limits.writesPerDay) return "writes";
+    if (creating && this.noteCount() >= limits.notes) return "notes";
+    if (this.sql.databaseSize >= limits.bytes) return "storage";
+    return null;
+  }
+
+  private countWrite(now: number): void {
+    const count = this.writesToday(now) + 1;
+    this.sql.exec("INSERT OR REPLACE INTO meta (key, value) VALUES ('writes_day', ?), ('writes_count', ?)", utcDay(now), String(count));
+  }
+
   // Writes
 
   saveNote(input: SaveInput): SaveResult {
@@ -445,6 +504,9 @@ export class Workspace extends DurableObject<Env> {
 
       if (!existing) {
         if (input.expectedRev !== undefined && input.expectedRev !== 0) return { status: "not_found" };
+        const limit = this.overLimit(true, now);
+        if (limit) return { status: "limit", limit };
+        this.countWrite(now);
         const id = ulid(now);
         const seq = this.recordChange("upsert", id, now, input.actor, "create");
         const rowid = this.sql
@@ -472,6 +534,9 @@ export class Workspace extends DurableObject<Env> {
         return { status: "conflict", note: toMeta(existing) };
       }
       if (existing.body === input.body) return { status: "unchanged", note: toMeta(existing) };
+      const limit = this.overLimit(false, now);
+      if (limit) return { status: "limit", limit };
+      this.countWrite(now);
 
       const seq = this.recordChange("upsert", existing.id, now, input.actor, "update");
       this.writeBody(existing, input.body, input.actor, now);
@@ -492,6 +557,9 @@ export class Workspace extends DurableObject<Env> {
       if (taken && note.path === target.path) return { status: "renamed", note: toMeta(note) };
 
       const now = Date.now();
+      const limit = this.overLimit(false, now);
+      if (limit) return { status: "limit", limit };
+      this.countWrite(now);
       const sources = this.sql
         .exec<{ src: number; dst_ref: string }>("SELECT src, dst_ref FROM links WHERE dst = ?", note.rowid)
         .toArray();

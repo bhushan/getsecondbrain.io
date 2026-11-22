@@ -4,7 +4,7 @@ import { CALLBACK_PATH, finishLogin, startLogin } from "./auth/google";
 import { handleAuthorize, servers } from "./auth/oauth";
 import { webPrincipal } from "./auth/principal";
 import { hosts } from "./config";
-import { deleteSession } from "./control/accounts";
+import { deleteSession, signupOpen } from "./control/accounts";
 import { eraseDeletedWorkspaces } from "./control/workspaceDeletion";
 import { privateRobots } from "./site/discovery";
 import { handleSite } from "./site/handler";
@@ -66,7 +66,8 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
       return Response.json({ error: "Cross-site request refused" }, { status: 403 });
     }
     const caller = await webPrincipal(request, env);
-    if (caller.status === "signed_out") return Response.json({ error: "Sign in required" }, { status: 401 });
+    // The sign-in screen reads `signup` to say whether anyone can join.
+    if (caller.status === "signed_out") return Response.json({ error: "Sign in required", signup: signupOpen(env) ? "open" : "invite" }, { status: 401 });
     if (caller.status === "forbidden") return Response.json({ error: "Not a member of that workspace" }, { status: 403 });
     return handleApi(request, env, caller.user, caller.principal);
   }

@@ -127,6 +127,27 @@ describe("public site on the www host", () => {
     expect(map).not.toMatch(/\sstyle=/);
   });
 
+  it("fills the hero with a full-grown brain of hundreds of neurons joined by links, the same on every load", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    const brain = html.match(/<g class="brain"[\s\S]*?<\/g>/)?.[0] ?? "";
+    const neurons = [...brain.matchAll(/<circle class="bn b-(\w+)" cx="([\d.]+)" cy="([\d.]+)"/g)];
+    expect(neurons.length).toBeGreaterThanOrEqual(300);
+    for (const [, , x, y] of neurons) {
+      expect(Number(x)).toBeGreaterThanOrEqual(0);
+      expect(Number(x)).toBeLessThanOrEqual(1200);
+      expect(Number(y)).toBeGreaterThanOrEqual(0);
+      expect(Number(y)).toBeLessThanOrEqual(600);
+    }
+    const pairs = (brain.match(/data-edges="([\d,;]+)"/)?.[1] ?? "").split(";").map((pair) => pair.split(",").map(Number));
+    expect(pairs.length).toBeGreaterThanOrEqual(neurons.length * 1.5);
+    for (const [a, b] of pairs) expect(a! < neurons.length && b! < neurons.length && a !== b).toBe(true);
+    // Several regions, each with its own tint, like lobes.
+    expect(new Set(neurons.map(([, tint]) => tint)).size).toBeGreaterThanOrEqual(4);
+    expect(await (await exports.default.fetch(`${SITE}/`)).text()).toBe(html);
+    // Still a light page: the whole landing page stays under 160 KB before compression.
+    expect(html.length).toBeLessThan(160_000);
+  });
+
   it("keeps the hero map surface deep-space dark and the signals styled in site.css", async () => {
     const css = await (await exports.default.fetch(`${SITE}/site.css`)).text();
     expect(css).toContain("#05040d");

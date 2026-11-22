@@ -24,8 +24,16 @@ function randomToken(): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** Whether this email may sign in during the private beta. The list is a Worker secret. */
-export function isAllowed(env: Pick<Env, "ALLOWED_EMAILS">, email: string): boolean {
+/** True only when the `SIGNUP` var is exactly "open". Anything else, or nothing, keeps sign-in closed. */
+// Typed as a plain string: the generated Env narrows SIGNUP to whatever wrangler.jsonc says today.
+export const signupOpen = (env: { SIGNUP?: string }) => env.SIGNUP === "open";
+
+/**
+ * Whether this Google account may sign in. With open sign-up, any verified account may; otherwise
+ * only the emails in the ALLOWED_EMAILS secret.
+ */
+export function isAllowed(env: { ALLOWED_EMAILS?: string; SIGNUP?: string }, email: string): boolean {
+  if (signupOpen(env)) return true;
   const allowed = (env.ALLOWED_EMAILS ?? "")
     .split(/[\s,]+/)
     .map((entry) => entry.trim().toLowerCase())
