@@ -71,7 +71,7 @@ export async function listWorkspaces(db: D1Database, userId: string): Promise<Wo
   const { results } = await db
     .prepare(
       `SELECT w.id, w.name, m.role FROM memberships m JOIN workspaces w ON w.id = m.workspace_id
-       WHERE m.user_id = ? ORDER BY m.created_at, w.id`,
+       WHERE m.user_id = ? AND w.deleted_at IS NULL ORDER BY m.created_at, w.id`,
     )
     .bind(userId)
     .all<WorkspaceInfo>();
@@ -83,10 +83,14 @@ export async function membership(db: D1Database, userId: string, workspaceId: st
   return db
     .prepare(
       `SELECT w.id, w.name, m.role FROM memberships m JOIN workspaces w ON w.id = m.workspace_id
-       WHERE m.user_id = ? AND m.workspace_id = ?`,
+       WHERE m.user_id = ? AND m.workspace_id = ? AND w.deleted_at IS NULL`,
     )
     .bind(userId, workspaceId)
     .first<WorkspaceInfo>();
+}
+
+export async function renameWorkspace(db: D1Database, workspaceId: string, name: string): Promise<void> {
+  await db.prepare("UPDATE workspaces SET name = ? WHERE id = ? AND deleted_at IS NULL").bind(name, workspaceId).run();
 }
 
 /** Creates a session and returns the raw token for the cookie. Only its hash is stored. */

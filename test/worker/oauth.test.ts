@@ -235,6 +235,26 @@ describe("connecting an app", () => {
     expect((await mcp(token, "tools/list")).status).toBe(403);
   });
 
+  it("disconnects a workspace's apps when the workspace is deleted", async () => {
+    const who = await signIn();
+    const second = await createWorkspace(env.DB, who.user.id, "Work");
+    const kept = await connect({ who });
+    const { token } = await connect({ who, workspace: second.id });
+    const remove = await who.api("/api/workspace", { method: "DELETE", headers: { "x-workspace": second.id }, body: JSON.stringify({ confirm: "Work" }) });
+    expect(remove.status).toBe(200);
+    expect((await mcp(token, "tools/list")).status).toBe(401);
+    expect((await mcp(kept.token, "tools/list")).status).toBe(200);
+    const list = (await (await who.api("/api/connections")).json()) as { connections: { workspaceId: string }[] };
+    expect(list.connections.map((c) => c.workspaceId)).toEqual([who.workspaceId]);
+  });
+
+  it("shows a connection under the workspace's current name after a rename", async () => {
+    const { who } = await connect();
+    await who.api("/api/workspace", { method: "PATCH", body: JSON.stringify({ name: "Personal" }) });
+    const list = (await (await who.api("/api/connections")).json()) as { connections: { workspaceName: string }[] };
+    expect(list.connections).toMatchObject([{ workspaceName: "Personal" }]);
+  });
+
   it("refuses an MCP request whose Host header names another site", async () => {
     const { token } = await connect();
     const response = await exports.default.fetch(MCP, {

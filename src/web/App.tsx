@@ -5,17 +5,19 @@ import { connectGuides } from "./connectGuides";
 import { type GraphHandle, GraphView } from "./GraphView";
 import { Icon, type IconName } from "./Icons";
 import { NotePanel } from "./NotePanel";
-import { ActivityPage, ConnectPage, ImportPage, SignIn, SkillsPage, TrashPage } from "./pages";
+import { ActivityPage, ConnectPage, ImportPage, SettingsPage, SignIn, SkillsPage, TrashPage } from "./pages";
 import { Search } from "./Search";
 
-type Page = "map" | "skills" | "connect" | "import" | "trash" | "activity";
-const PAGES: { id: Page; label: string; short: string; icon: IconName; path: string }[] = [
+type Page = "map" | "skills" | "connect" | "import" | "trash" | "activity" | "settings";
+/** Pages in the dock, plus Settings, which opens from the workspace menu and the account row. */
+const PAGES: { id: Page; label: string; short: string; icon: IconName; path: string; inDock?: false }[] = [
   { id: "map", label: "Map", short: "Map", icon: "map", path: "/" },
   { id: "skills", label: "Skills", short: "Skills", icon: "skills", path: "/skills" },
   { id: "connect", label: "Connect apps", short: "Connect", icon: "connect", path: "/connect" },
   { id: "import", label: "Import", short: "Import", icon: "import", path: "/import" },
   { id: "activity", label: "Activity", short: "Activity", icon: "activity", path: "/activity" },
   { id: "trash", label: "Trash", short: "Trash", icon: "trash", path: "/trash" },
+  { id: "settings", label: "Settings", short: "Settings", icon: "settings", path: "/settings", inDock: false },
 ];
 const pageFromPath = (path: string): Page => PAGES.find((page) => page.path === path)?.id ?? "map";
 const WORKSPACE_KEY = "sb.workspace";
@@ -152,6 +154,27 @@ export function App() {
     switchWorkspace(created.id);
   };
 
+  const forgetWorkspace = () => {
+    try {
+      localStorage.removeItem(WORKSPACE_KEY);
+    } catch {}
+    setWorkspace("");
+  };
+  const workspaceDeleted = async () => {
+    forgetWorkspace();
+    setSelected(null);
+    setDraftPath(null);
+    setStats(null);
+    await load();
+    setVersion((v) => v + 1);
+    go("map");
+  };
+  const workspaceRestored = async (id: string) => {
+    await load();
+    switchWorkspace(id);
+    go("map");
+  };
+
   if (me === null)
     return (
       <div className="loading" role="status">
@@ -233,7 +256,12 @@ export function App() {
               <select
                 aria-label="Workspace"
                 value={me.workspaceId}
-                onChange={(event) => (event.target.value === "__new" ? setNaming("") : switchWorkspace(event.target.value))}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === "__new") setNaming("");
+                  else if (value === "__settings") go("settings");
+                  else switchWorkspace(value);
+                }}
               >
                 {me.workspaces.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -241,6 +269,7 @@ export function App() {
                   </option>
                 ))}
                 <option value="__new">New workspace…</option>
+                <option value="__settings">Workspace settings…</option>
               </select>
             </label>
             {naming !== null && (
@@ -271,6 +300,9 @@ export function App() {
               <span className="account-name">{me.user.name}</span>
               <span className="account-email">{me.user.email}</span>
             </span>
+            <button type="button" className="icon" aria-label="Settings" title="Settings" onClick={() => go("settings")}>
+              <Icon name="settings" />
+            </button>
             <button type="submit" className="icon" aria-label="Sign out" title="Sign out">
               <Icon name="signout" />
             </button>
@@ -278,7 +310,7 @@ export function App() {
         </header>
         <nav className="dock" aria-label="Main">
           <ul>
-            {PAGES.map((item) => (
+            {PAGES.filter((item) => item.inDock !== false).map((item) => (
               <li key={item.id}>
                 <a
                   href={item.path}
@@ -310,6 +342,14 @@ export function App() {
           {page === "import" && <ImportPage onDone={refresh} />}
           {page === "trash" && <TrashPage onChanged={refresh} />}
           {page === "activity" && <ActivityPage onOpen={open} />}
+          {page === "settings" && (
+            <SettingsPage
+              me={me}
+              onRenamed={() => void load()}
+              onDeleted={() => void workspaceDeleted()}
+              onRestored={(id) => void workspaceRestored(id)}
+            />
+          )}
         </div>
       )}
 

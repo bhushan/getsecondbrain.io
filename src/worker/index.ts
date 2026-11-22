@@ -5,6 +5,7 @@ import { handleAuthorize, servers } from "./auth/oauth";
 import { webPrincipal } from "./auth/principal";
 import { hosts } from "./config";
 import { deleteSession } from "./control/accounts";
+import { eraseDeletedWorkspaces } from "./control/workspaceDeletion";
 import { handleSite } from "./site/handler";
 
 export { Workspace } from "./workspace/workspace";
@@ -83,5 +84,10 @@ export default {
     if (host === appHost) return handleApp(request, env, ctx);
     if (host === siteHost) return handleSite(request, env);
     return new Response("Not found", { status: 404 });
+  },
+
+  /** Daily: erase workspaces whose recovery period has ended. */
+  async scheduled(_controller, env): Promise<void> {
+    await eraseDeletedWorkspaces(env);
   },
 } satisfies ExportedHandler<Env>;

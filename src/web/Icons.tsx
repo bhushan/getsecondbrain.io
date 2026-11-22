@@ -63,6 +63,13 @@ const paths = {
       <path d="M8 7.4l8 1.2M16.7 10.6l-5.4 5.8" />
     </>
   ),
+  settings: (
+    <>
+      <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="8" cy="17" r="2" />
+    </>
+  ),
   signout: (
     <>
       <path d="M14 5h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" />

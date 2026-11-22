@@ -19,6 +19,8 @@
     "bindings": [{ "name": "WORKSPACE", "class_name": "Workspace" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Workspace"] }],
+  // Daily job: erase workspaces deleted more than 30 days ago.
+  "triggers": { "crons": ["17 3 * * *"] },
   // Local development: two loopback hostnames stand in for the app and MCP hosts.
   "vars": {
     "APP_ORIGIN": "http://localhost:8787",
@@ -50,7 +52,8 @@
       "d1_databases": [
         { "binding": "DB", "database_name": "getsecondbrain-production", "database_id": "825d5f8a-d950-4389-8456-0972dc12ef0d", "migrations_dir": "migrations" }
       ],
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "44c4540a488c4cf8a8237ca81cebcdf5" }]
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "44c4540a488c4cf8a8237ca81cebcdf5" }],
+      "triggers": { "crons": ["17 3 * * *"] }
     }
   }
 }

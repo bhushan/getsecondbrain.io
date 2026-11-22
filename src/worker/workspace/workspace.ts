@@ -81,6 +81,11 @@ export class Workspace extends DurableObject<Env> {
     }
   }
 
+  /** Erases every note, revision and setting. Only the daily job calls this, for a workspace deleted long enough ago. */
+  async erase(): Promise<void> {
+    await this.ctx.storage.deleteAll();
+  }
+
   schemaVersion(): number {
     const row = this.sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema_version'").toArray()[0];
     return row ? Number(row.value) : 0;

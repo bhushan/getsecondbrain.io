@@ -1,4 +1,5 @@
-import { createWorkspace, listWorkspaces, type User } from "../control/accounts";
+import { createWorkspace, listWorkspaces, membership, renameWorkspace, type User } from "../control/accounts";
+import { deleteWorkspace, listDeletedWorkspaces, restoreWorkspace } from "../control/workspaceDeletion";
 import { hosts } from "../config";
 import { oauthApi } from "../auth/oauth";
 import { actorOf, type Principal } from "../auth/principal";
@@ -33,6 +34,12 @@ function notePath(raw: unknown): string {
   }
 }
 
+const workspaceName = (raw: unknown) => {
+  const name = text(raw, "name").trim().slice(0, 80);
+  if (!name) throw new BadRequest("name is required");
+  return name;
+};
+
 const text = (raw: unknown, name: string) => {
   if (typeof raw !== "string" || !raw) throw new BadRequest(`${name} is required`);
   return raw;
@@ -61,9 +68,36 @@ export async function handleApi(request: Request, env: Env, user: User, principa
 
       case "POST /api/workspaces": {
         const body = await readJson<{ name?: unknown }>(request, 4096);
-        const name = text(body.name, "name").trim().slice(0, 80);
-        if (!name) throw new BadRequest("name is required");
-        return json(await createWorkspace(env.DB, user.id, name), 201);
+        return json(await createWorkspace(env.DB, user.id, workspaceName(body.name)), 201);
+      }
+
+      // Rename and delete act on the current workspace, which webPrincipal checked; only its owner may.
+      case "PATCH /api/workspace": {
+        const current = await membership(env.DB, user.id, principal.workspaceId);
+        if (current?.role !== "owner") return fail(403, "Only the owner can rename this workspace");
+        const body = await readJson<{ name?: unknown }>(request, 4096);
+        const name = workspaceName(body.name);
+        await renameWorkspace(env.DB, current.id, name);
+        return json({ ...current, name });
+      }
+
+      case "DELETE /api/workspace": {
+        const current = await membership(env.DB, user.id, principal.workspaceId);
+        if (current?.role !== "owner") return fail(403, "Only the owner can delete this workspace");
+        const body = await readJson<{ confirm?: unknown }>(request, 4096);
+        if (body.confirm !== current.name) throw new BadRequest("Type the workspace name exactly to delete it");
+        if ((await listWorkspaces(env.DB, user.id)).length < 2) return fail(409, "You cannot delete your only workspace");
+        await deleteWorkspace(env, user.id, current.id);
+        return json({ ok: true });
+      }
+
+      case "GET /api/workspaces/deleted":
+        return json({ workspaces: await listDeletedWorkspaces(env.DB, user.id) });
+
+      case "POST /api/workspaces/restore": {
+        const body = await readJson<{ id?: unknown }>(request, 4096);
+        // Matched against the signed-in user's own workspaces, so another user's id finds nothing.
+        return (await restoreWorkspace(env.DB, user.id, text(body.id, "id"))) ? json({ ok: true }) : fail(404, "No deleted workspace to restore");
       }
 
       case "GET /api/stats":
@@ -147,13 +181,15 @@ export async function handleApi(request: Request, env: Env, user: User, principa
 
       case "GET /api/connections": {
         const oauth = oauthApi(env);
-        const { items } = await oauth.listUserGrants(user.id);
+        const [{ items }, workspaces] = await Promise.all([oauth.listUserGrants(user.id), listWorkspaces(env.DB, user.id)]);
+        // The name saved at consent goes stale after a rename, so show the current one.
+        const names = new Map(workspaces.map((workspace) => [workspace.id, workspace.name]));
         return json({
           connections: items.map((grant) => ({
             id: grant.id,
             app: grant.metadata?.app ?? grant.clientId,
             workspaceId: grant.metadata?.workspaceId ?? null,
-            workspaceName: grant.metadata?.workspaceName ?? null,
+            workspaceName: names.get(grant.metadata?.workspaceId) ?? grant.metadata?.workspaceName ?? null,
             canWrite: grant.scope.includes("notes:write"),
             createdAt: grant.createdAt,
           })),

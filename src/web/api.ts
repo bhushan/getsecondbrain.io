@@ -58,6 +58,13 @@ export interface SkillSummary {
   bundle: string | null;
 }
 
+export interface DeletedWorkspace {
+  id: string;
+  name: string;
+  deletedAt: number;
+  eraseAt: number;
+}
+
 export type SaveResult =
   | { status: "created" | "updated" | "unchanged" | "conflict"; note: NoteMeta }
   | { status: "not_found" };
@@ -93,6 +100,10 @@ const send = (method: string, body: unknown) => ({ method, body: JSON.stringify(
 export const api = {
   me: () => request<Me>("/api/me"),
   createWorkspace: (name: string) => request<Workspace>("/api/workspaces", send("POST", { name })),
+  renameWorkspace: (name: string) => request<Workspace>("/api/workspace", send("PATCH", { name })),
+  deleteWorkspace: (confirm: string) => request<{ ok: true }>("/api/workspace", send("DELETE", { confirm })),
+  deletedWorkspaces: () => request<{ workspaces: DeletedWorkspace[] }>("/api/workspaces/deleted"),
+  restoreWorkspace: (id: string) => request<{ ok: true }>("/api/workspaces/restore", send("POST", { id })),
   stats: () => request<{ notes: number; links: number; unresolved: number; tags: number; seq: number }>("/api/stats"),
   graph: () => request<GraphData>("/api/graph"),
   saveLayout: (ids: string[], positions: number[]) => request<{ savedAt: number }>("/api/layout", send("PUT", { ids, positions })),

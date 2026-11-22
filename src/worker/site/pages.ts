@@ -465,7 +465,7 @@ export function privacyPage(origins: Origins): string {
 <p>We use one cookie to keep you signed in and one short-lived cookie during sign-in. We do not use analytics, advertising or tracking cookies.</p>
 
 <h2>How long we keep it</h2>
-<p>Your notes stay until you delete them. Notes you move to the trash can be restored. If you ask us to delete your account, we delete your notes, workspaces and account details; copies in our provider's recovery backups expire within 30 days.</p>
+<p>Your notes stay until you delete them. Notes you move to the trash can be restored. If you delete a workspace, you can restore it for 30 days; after that its notes are erased. If you ask us to delete your account, we delete your notes, workspaces and account details; copies in our provider's recovery backups expire within 30 days.</p>
 
 <h2>Your choices</h2>
 <p>You can edit or remove your notes, disconnect apps, and ask us for a copy of your data or to delete your account by writing to <a href="mailto:${CONTACT}">${CONTACT}</a>. Depending on where you live, you may have further rights under laws such as the GDPR; we will honour them.</p>
