@@ -1,8 +1,12 @@
 import { hosts } from "../config";
 import { SITE_CSP, landingPage, privacyPage, termsPage } from "./pages";
 
-/** Static files the site may serve: the brand files and the landing map script. Nothing else of the app is exposed here. */
-const SITE_FILES = new Set(["/site.js", "/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png"]);
+/** Static files the site may serve. Nothing else of the app is exposed here. */
+const SITE_FILES = new Set(["/site.js", "/site.css", "/tokens.css", "/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png"]);
+/** Folders served whole: the font and the app logos. Names are plain, so no path tricks get through. */
+const SITE_FOLDERS = /^\/(fonts|logos)\/[a-z0-9-]+\.(woff2|svg)$/;
+/** Files that change with the page markup expire with the page; the rest rarely change. */
+const PAGE_ASSETS = new Set(["/site.js", "/site.css", "/tokens.css"]);
 
 const PAGE_CACHE = "public, max-age=300";
 
@@ -29,11 +33,10 @@ export async function handleSite(request: Request, env: Env): Promise<Response> 
   if (path === "/privacy") return html(privacyPage());
   if (path === "/terms") return html(termsPage(appOrigin));
   if (path === "/favicon.ico") return Response.redirect(new URL("/favicon-32.png", request.url).toString(), 301);
-  if (SITE_FILES.has(path)) {
+  if (SITE_FILES.has(path) || SITE_FOLDERS.test(path)) {
     const asset = await env.ASSETS.fetch(request);
     const response = new Response(asset.body, asset);
-    // The script changes with the page markup, so it expires with the page; brand files rarely change.
-    response.headers.set("cache-control", path === "/site.js" ? PAGE_CACHE : "public, max-age=86400");
+    response.headers.set("cache-control", PAGE_ASSETS.has(path) ? PAGE_CACHE : "public, max-age=86400");
     response.headers.set("x-content-type-options", "nosniff");
     return response;
   }

@@ -103,6 +103,25 @@ describe("public site on the www host", () => {
     expect(script.headers.get("cache-control")).toBe("public, max-age=300");
   });
 
+  it("serves the shared design tokens, the font and the app logos from its own origin", async () => {
+    for (const [path, type] of [["/tokens.css", "text/css"], ["/site.css", "text/css"], ["/fonts/inter-var.woff2", "font/woff2"], ["/logos/claude.svg", "image/svg+xml"]] as const) {
+      const response = await exports.default.fetch(`${SITE}${path}`);
+      expect(response.status, path).toBe(200);
+      expect(response.headers.get("content-type"), path).toContain(type);
+    }
+  });
+
+  it("does not serve other app files from the www host", async () => {
+    expect((await exports.default.fetch(`${SITE}/index.html`)).status).toBe(404);
+    expect((await exports.default.fetch(`${SITE}/logos/../index.html`)).status).toBe(404);
+  });
+
+  it("allows fonts and stylesheets only from its own origin", async () => {
+    const csp = (await exports.default.fetch(`${SITE}/`)).headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("font-src 'self'");
+    expect(csp).toMatch(/style-src 'self'/);
+  });
+
   it("never exposes the API or sign-in routes on the www host", async () => {
     expect((await exports.default.fetch(`${SITE}/api/me`)).status).toBe(404);
     expect((await exports.default.fetch(`${SITE}/auth/login`)).status).toBe(404);

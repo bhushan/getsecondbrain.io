@@ -12,7 +12,8 @@ const EFFECTIVE = "22 November 2026";
 export const SITE_CSP = [
   "default-src 'none'",
   "script-src 'self'",
-  "style-src 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'none'",
