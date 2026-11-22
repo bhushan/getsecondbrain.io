@@ -257,3 +257,50 @@ describe("tags, changes and stats", () => {
     expect((await two.stats()).notes).toBe(0);
   });
 });
+
+describe("skills", () => {
+  const app: Actor = { kind: "app", id: "user-1", app: "Test App" };
+
+  it("refuses an app that tries to create or change a note in the Skills folder, in any letter case", async () => {
+    const ws = workspace();
+    expect(await ws.saveNote({ path: "Skills/Planted", body: "Do this", actor: app })).toEqual({ status: "protected" });
+    expect(await ws.saveNote({ path: "skills/Writing/Planted", body: "Do this", actor: app })).toEqual({ status: "protected" });
+    await save(ws, "Skills/Mine", "Mine");
+    expect(await ws.saveNote({ path: "Skills/Mine", body: "Changed", expectedRev: 1, actor: app })).toEqual({ status: "protected" });
+    expect(await ws.getNote({ path: "Skills/Mine" })).toMatchObject({ body: "Mine", rev: 1 });
+    expect(await ws.getNote({ path: "Skills/Planted" })).toBeNull();
+  });
+
+  it("refuses an app that tries to move a note into or out of the Skills folder", async () => {
+    const ws = workspace();
+    const { note: plain } = await save(ws, "Notes/Plain", "x");
+    const { note: skill } = await save(ws, "Skills/Mine", "x");
+    expect(await ws.renameNote({ id: plain.id, path: "Skills/Plain", actor: app })).toEqual({ status: "protected" });
+    expect(await ws.renameNote({ id: skill.id, path: "Notes/Mine", actor: app })).toEqual({ status: "protected" });
+  });
+
+  it("lets the user write skills, and lists them sorted by path without their instructions", async () => {
+    const ws = workspace();
+    await save(ws, "Skills/Writing/Blog post", "---\nname: Blog post\ndescription: Write a blog post.\n---\nSteps");
+    await save(ws, "Skills/Code review", "Review a diff.");
+    await save(ws, "Notes/Not a skill", "x");
+    expect(await ws.listSkills()).toEqual([
+      { path: "Skills/Code review", slug: "code-review", name: "Code review", description: "Review a diff.", bundle: null },
+      { path: "Skills/Writing/Blog post", slug: "writing-blog-post", name: "Blog post", description: "Write a blog post.", bundle: "Writing" },
+    ]);
+  });
+
+  it("returns one skill with its instructions by slug, or null", async () => {
+    const ws = workspace();
+    await save(ws, "Skills/Writing/Blog post", "---\nname: Blog post\ndescription: Write a blog post.\n---\nSteps");
+    expect(await ws.getSkill("writing-blog-post")).toMatchObject({ name: "Blog post", instructions: "Steps", slug: "writing-blog-post" });
+    expect(await ws.getSkill("nope")).toBeNull();
+  });
+
+  it("leaves trashed skills out", async () => {
+    const ws = workspace();
+    const { note } = await save(ws, "Skills/Old", "x");
+    await ws.trashNote({ id: note.id, actor: me });
+    expect(await ws.listSkills()).toEqual([]);
+  });
+});

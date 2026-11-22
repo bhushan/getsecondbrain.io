@@ -96,14 +96,14 @@ export async function handleApi(request: Request, env: Env, user: User, principa
           expectedRev: body.expectedRev as number | undefined,
           actor,
         });
-        const status = { created: 201, updated: 200, unchanged: 200, conflict: 409, not_found: 404 }[result.status];
+        const status = { created: 201, updated: 200, unchanged: 200, conflict: 409, not_found: 404, protected: 403 }[result.status];
         return json(result, status);
       }
 
       case "POST /api/notes/rename": {
         const body = await readJson<{ id?: unknown; path?: unknown }>(request, 4096);
         const result = await workspace.renameNote({ id: text(body.id, "id"), path: notePath(body.path), actor });
-        return json(result, { renamed: 200, exists: 409, not_found: 404 }[result.status]);
+        return json(result, { renamed: 200, exists: 409, not_found: 404, protected: 403 }[result.status]);
       }
 
       case "POST /api/notes/trash": {
@@ -116,6 +116,9 @@ export async function handleApi(request: Request, env: Env, user: User, principa
         const note = await workspace.restoreNote({ id: text(body.id, "id"), actor });
         return note ? json(note) : fail(404, "Note not found in trash");
       }
+
+      case "GET /api/skills":
+        return json({ skills: await workspace.listSkills() });
 
       case "GET /api/trash":
         return json({ notes: await workspace.listTrash() });

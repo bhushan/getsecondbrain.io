@@ -256,3 +256,41 @@ describe("the MCP endpoint path", () => {
     expect((await mcp(token, "tools/list")).status).toBe(200);
   });
 });
+
+describe("skills as MCP prompts", () => {
+  const skill = "---\nname: Blog post\ndescription: Write a blog post.\n---\nStart with the point.";
+  const putSkill = (who: Awaited<ReturnType<typeof signIn>>, path: string, body: string) =>
+    who.api("/api/notes", { method: "PUT", body: JSON.stringify({ path, body }) });
+
+  it("advertises prompts and lists the user's skills as prompts", async () => {
+    const who = await signIn();
+    await putSkill(who, "Skills/Writing/Blog post", skill);
+    const { token } = await connect({ who });
+    const init = await rpc(token!, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } });
+    expect(init.result.capabilities.prompts).toBeDefined();
+    const { prompts } = (await rpc(token!, "prompts/list")).result;
+    expect(prompts).toEqual([{ name: "writing-blog-post", title: "Blog post", description: "Write a blog post.", arguments: [expect.objectContaining({ name: "request", required: false })] }]);
+  });
+
+  it("returns a skill's instructions as a user message, with the user's request added", async () => {
+    const who = await signIn();
+    await putSkill(who, "Skills/Writing/Blog post", skill);
+    const { token } = await connect({ who, write: false });
+    const result = (await rpc(token!, "prompts/get", { name: "writing-blog-post", arguments: { request: "about wombats" } })).result;
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].role).toBe("user");
+    expect(result.messages[0].content.text).toContain("Start with the point.");
+    expect(result.messages[0].content.text).toContain("about wombats");
+    expect((await rpc(token!, "prompts/get", { name: "nope" })).error).toBeDefined();
+  });
+
+  it("only offers the connected workspace's skills", async () => {
+    const alice = await signIn();
+    await putSkill(alice, "Skills/Secret", "alice only");
+    const { token } = await connect();
+    expect((await rpc(token!, "prompts/list")).result.prompts).toEqual([]);
+    const peek = await rpc(token!, "prompts/get", { name: "secret" });
+    expect(peek.error).toBeDefined();
+    expect(JSON.stringify(peek)).not.toContain("alice only");
+  });
+});

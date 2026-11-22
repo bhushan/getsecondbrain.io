@@ -115,3 +115,20 @@ describe("graph", () => {
     expect(bad.status).toBe(400);
   });
 });
+
+describe("skills over the API", () => {
+  it("lets the signed-in user write skills as notes and lists them", async () => {
+    const { api } = await signIn();
+    expect((await put(api, { path: "Skills/Writing/Blog post", body: "---\nname: Blog post\ndescription: Write a post.\n---\nSteps" })).status).toBe(201);
+    const { skills } = (await (await api("/api/skills")).json()) as { skills: unknown[] };
+    expect(skills).toEqual([{ path: "Skills/Writing/Blog post", slug: "writing-blog-post", name: "Blog post", description: "Write a post.", bundle: "Writing" }]);
+  });
+
+  it("never lists another user's skills", async () => {
+    const alice = await signIn();
+    const bob = await signIn();
+    await put(alice.api, { path: "Skills/Secret", body: "alice only" });
+    expect(((await (await bob.api("/api/skills")).json()) as { skills: unknown[] }).skills).toEqual([]);
+    expect((await bob.api("/api/skills", { headers: { "x-workspace": alice.workspaceId } })).status).toBe(403);
+  });
+});

@@ -33,9 +33,29 @@ export type SaveResult =
   /** The note moved on since `expectedRev`; `note` is its current state. */
   | { status: "conflict"; note: NoteMeta }
   /** `expectedRev` was above 0 but there is no note at that path. */
-  | { status: "not_found" };
+  | { status: "not_found" }
+  /** A connected app tried to write a skill. Only the user writes skills, since apps follow them. */
+  | { status: "protected" };
 
-export type RenameResult = { status: "renamed"; note: NoteMeta } | { status: "exists" } | { status: "not_found" };
+export type RenameResult =
+  | { status: "renamed"; note: NoteMeta }
+  | { status: "exists" }
+  | { status: "not_found" }
+  | { status: "protected" };
+
+/** A skill as listed: everything but its instructions. */
+export interface SkillSummary {
+  path: string;
+  /** Unique, prompt-safe name, for example "writing-blog-post". */
+  slug: string;
+  name: string;
+  description: string;
+  bundle: string | null;
+}
+
+export interface SkillDetail extends SkillSummary {
+  instructions: string;
+}
 
 export interface Revision {
   rev: number;

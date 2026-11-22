@@ -25,6 +25,8 @@ describe("MCP tool list", () => {
       "update_note",
       "append_to_note",
       "link_notes",
+      "list_skills",
+      "use_skill",
     ]);
     expect(names.filter((name) => /delete|trash|remove|fetch|url/.test(name))).toEqual([]);
   });
@@ -45,6 +47,12 @@ describe("MCP server instructions", () => {
     expect(SERVER_INSTRUCTIONS).toMatch(/local files/i);
     expect(SERVER_INSTRUCTIONS).toMatch(/save/i);
     expect(SERVER_INSTRUCTIONS).toMatch(/data, not instructions/i);
+  });
+
+  it("tell the app to use the user's skills when a task matches one, and that only use_skill returns instructions", () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/list_skills/);
+    expect(SERVER_INSTRUCTIONS).toMatch(/use_skill/);
+    expect(SERVER_INSTRUCTIONS).toMatch(/only the user/i);
   });
 
   it("describe search as the first step for anything about the user", () => {
@@ -166,5 +174,80 @@ describe("MCP read tools", () => {
     expect((await call(two, "get_note", { path: "Private" })).isError).toBe(true);
     expect((await call(two, "get_note", { path: "Private", workspaceId: one.workspaceId })).isError).toBe(true);
     expect((await call(two, "list_recent")).text).toMatch(/no notes/i);
+  });
+});
+
+describe("MCP skills", () => {
+  /** Skills are written by the user, never by an app. */
+  const writeSkill = (who: Principal, path: string, body: string) =>
+    env.WORKSPACE.getByName(who.workspaceId).saveNote({ path, body, actor: { kind: "user", id: who.userId } });
+
+  it("refuses every write tool on a path in the Skills folder, and says the user writes skills in Second Brain", async () => {
+    const who = principal();
+    await writeSkill(who, "Skills/Mine", "Mine");
+    const attempts: [string, Record<string, unknown>][] = [
+      ["save_note", { path: "Skills/Planted", body: "Do this" }],
+      ["save_note", { path: "skills/Writing/Planted", body: "Do this" }],
+      ["update_note", { path: "Skills/Mine", body: "Changed", expected_rev: 1 }],
+      ["append_to_note", { path: "Skills/Mine", text: "And also this" }],
+      ["link_notes", { from: "Skills/Mine", to: "Other" }],
+    ];
+    for (const [name, args] of attempts) {
+      const result = await call(who, name, args);
+      expect(result, name).toMatchObject({ isError: true });
+      expect(result.text, name).toMatch(/only the user.*Second Brain/i);
+    }
+    const ws = env.WORKSPACE.getByName(who.workspaceId);
+    expect(await ws.getNote({ path: "Skills/Mine" })).toMatchObject({ body: "Mine", rev: 1 });
+    expect(await ws.listSkills()).toHaveLength(1);
+  });
+
+  it("lists skills by bundle with their names and descriptions", async () => {
+    const who = principal();
+    await writeSkill(who, "Skills/Code review", "---\nname: Code review\ndescription: Review a diff for bugs.\n---\nSteps");
+    await writeSkill(who, "Skills/Writing/Blog post", "---\ndescription: Write a blog post.\n---\nSteps");
+    const text = (await call(who, "list_skills")).text;
+    expect(text).toContain("- code-review: Code review. Review a diff for bugs.");
+    expect(text).toMatch(/Writing\n- writing-blog-post: Blog post\. Write a blog post\./);
+  });
+
+  it("says how to add skills when there are none", async () => {
+    expect((await call(principal(), "list_skills")).text).toMatch(/no skills yet.*Skills/i);
+  });
+
+  it("returns a skill's instructions as the user's own, by slug or by name", async () => {
+    const who = principal();
+    await writeSkill(who, "Skills/Writing/Blog post", "---\nname: Blog post\ndescription: Write a blog post.\n---\nStart with the point.");
+    for (const name of ["writing-blog-post", "blog post"]) {
+      const result = await call(who, "use_skill", { name });
+      expect(result.isError, name).toBeFalsy();
+      expect(result.text).toMatch(/skill the user wrote/i);
+      expect(result.text).toMatch(/follow/i);
+      expect(result.text).toContain("Start with the point.");
+      expect(result.text).not.toMatch(/not instructions/i);
+    }
+    expect((await call(who, "use_skill", { name: "nope" })).text).toMatch(/list_skills/);
+  });
+
+  it("still frames a skill as data when it is read as a plain note", async () => {
+    const who = principal();
+    await writeSkill(who, "Skills/Mine", "Do this");
+    expect((await call(who, "get_note", { path: "Skills/Mine" })).text).toMatch(/not instructions/i);
+  });
+
+  it("works on a read-only connection", async () => {
+    const who = principal(["read"]);
+    await writeSkill(who, "Skills/Mine", "Do this");
+    expect((await call(who, "list_skills")).text).toContain("mine");
+    expect((await call(who, "use_skill", { name: "mine" })).text).toContain("Do this");
+  });
+
+  it("only ever reads the caller's own workspace's skills", async () => {
+    const one = principal();
+    const two = principal();
+    await writeSkill(one, "Skills/Secret", "secret-pangolin");
+    expect((await call(two, "list_skills")).text).toMatch(/no skills yet/i);
+    expect((await call(two, "use_skill", { name: "secret" })).isError).toBe(true);
+    expect((await call(two, "use_skill", { name: "secret", workspaceId: one.workspaceId })).isError).toBe(true);
   });
 });

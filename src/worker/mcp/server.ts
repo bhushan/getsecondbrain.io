@@ -3,9 +3,10 @@ import { createMcpHandler, getMcpAuthContext } from "agents/mcp/server";
 import { env } from "cloudflare:workers";
 import type { Principal } from "../auth/principal";
 import { hosts } from "../config";
+import { serveSkillPrompts } from "./prompts";
 import { SERVER_INSTRUCTIONS, TOOLS, runTool } from "./tools";
 
-/** Built once per isolate: a stateless server whose tools read the verified caller from the auth context. */
+/** Built for each request: a stateless server whose tools and prompts read the verified caller from the auth context. */
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "Second Brain", version: "0.1.0" },
@@ -25,6 +26,7 @@ function createServer(): McpServer {
       },
     );
   }
+  serveSkillPrompts(server, env);
   return server;
 }
 
