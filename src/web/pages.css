@@ -31,10 +31,6 @@
 .signin-screen :where(h1, h2, h3, p, dl, dd, ol, ul) { margin: 0; }
 :is(.page, .signin-screen) :is(code, pre) { font-family: var(--font-mono); font-size: 0.875em; }
 :is(.page, .signin-screen) :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-:is(.page, .signin-screen) .sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
 
 .page {
   container-type: inline-size;
@@ -52,45 +48,23 @@
 .pg-lede { max-width: 62ch; margin-top: 12px; font-size: 1.0625rem; line-height: 1.6; color: var(--muted-foreground); }
 .pg-header { margin-bottom: 32px; }
 .pg-section { margin-top: 64px; scroll-margin-top: 24px; }
-.pg-muted { color: var(--muted-foreground); }
 .pg-small { font-size: var(--text-sm); }
-.page .pg-section > .pg-muted { margin-bottom: 16px; }
-.page .pg-section > .pg-muted:last-child { margin: 16px 0 0; }
+.page .pg-section > .muted { margin-bottom: 16px; }
+.page .pg-section > .muted:last-child { margin: 16px 0 0; }
 
-/* Buttons: pills. Every property is set here so shell button styles cannot leak in. */
-.page .pg-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none;
-  min-height: 36px; min-width: 0; padding: 0 16px; margin: 0;
-  border: 1px solid var(--border); border-radius: var(--radius-pill);
-  background: var(--background); color: var(--foreground); box-shadow: var(--shadow-sm);
-  font: 500 var(--text-sm)/1 var(--font-sans); text-decoration: none; white-space: nowrap;
-  cursor: pointer; transform: none; transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-}
-.page .pg-btn svg { flex: none; }
-.page .pg-btn:active:not(:disabled) { transform: translateY(1px); }
-.page .pg-btn:disabled { opacity: 0.5; cursor: default; }
-.page .pg-btn-primary { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
-.page .pg-btn-lg { min-height: 44px; padding: 0 22px; font-size: 0.9375rem; }
-.page .pg-btn-sm { min-height: 32px; padding: 0 12px; font-size: 0.8125rem; gap: 6px; }
-.page .pg-btn-ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--muted-foreground); }
-.page .pg-btn[data-done] { color: var(--success); }
-.page .pg-btn-primary[data-done] { color: var(--primary-foreground); }
-@media (hover: hover) {
-  .page .pg-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--border); }
-  .page .pg-btn-ghost:hover:not(:disabled) { color: var(--foreground); border-color: transparent; }
-  .page .pg-btn-primary:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); opacity: 0.88; }
-}
+/* Buttons: the shared pill primitives from styles.css, plus two sizes and the copied state. */
+.page .btn-lg { min-height: 44px; padding: 0 22px; font-size: 0.9375rem; }
+.page .btn-sm { min-height: 32px; padding: 0 12px; font-size: 0.8125rem; gap: 6px; }
+.page button.ghost { color: var(--muted-foreground); }
+.page button.ghost:hover:not(:disabled) { color: var(--foreground); }
+.page button[data-done] { color: var(--success); }
+.page button.primary[data-done] { color: var(--primary-foreground); }
+.page button svg { flex: none; }
+.page .pg-section button.link { margin-top: 4px; font-size: var(--text-sm); font-weight: 500; }
 @media (pointer: coarse) {
-  .page .pg-btn, .page .hero-status { min-height: 44px; }
+  .page button:not(.link), .page .hero-status { min-height: 44px; }
   .page .import-failed summary { padding: 11px 0; }
 }
-.page .pg-link {
-  display: inline; min-height: 0; padding: 0; margin: 0; border: 0; border-radius: 4px; background: none; box-shadow: none;
-  color: var(--foreground); font: inherit; font-weight: 500; text-decoration: underline; text-decoration-color: var(--ring);
-  text-underline-offset: 3px; cursor: pointer; transform: none;
-}
-.page .pg-link:hover { text-decoration-color: currentColor; }
-.page .pg-section .pg-link { margin-top: 4px; font-size: var(--text-sm); }
 
 .pg-pill {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border);
@@ -157,7 +131,7 @@
 .page .app-tile {
   display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 68px; padding: 12px 14px; margin: 0;
   border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); box-shadow: none;
-  color: var(--foreground); font: inherit; text-align: left; cursor: pointer; transform: none;
+  color: var(--foreground); font: inherit; line-height: 1.4; text-align: left; justify-content: flex-start; white-space: normal; cursor: pointer; transform: none;
   transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 .page .app-tile[aria-selected="true"] { border-color: var(--foreground); box-shadow: inset 0 0 0 1px var(--foreground); }
@@ -312,7 +286,7 @@
   .prompt-list li { align-items: flex-start; }
   .list-card li:has(.app-mark) { flex-wrap: wrap; }
   .list-card li:has(.app-mark) .list-text { flex-basis: calc(100% - 60px); }
-  .list-card li:has(.app-mark) .pg-btn { margin-left: 50px; }
+  .list-card li:has(.app-mark) button { margin-left: 50px; }
 }
 
 /* Sign in */

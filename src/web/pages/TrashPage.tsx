@@ -33,7 +33,7 @@ export function TrashPage({ onChanged }: { onChanged(): void }) {
                   <strong>{note.path.slice(slash + 1)}</strong>
                   {slash > 0 && <span>{note.path.slice(0, slash)}</span>}
                 </div>
-                <button type="button" className="pg-btn pg-btn-sm" onClick={() => void api.restore(note.id).then(() => (load(), onChanged()))}>
+                <button type="button" className="btn-sm" onClick={() => void api.restore(note.id).then(() => (load(), onChanged()))}>
                   Restore
                 </button>
               </li>

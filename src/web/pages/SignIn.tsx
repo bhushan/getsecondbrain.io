@@ -9,7 +9,7 @@ export function SignIn() {
           <img src="/logo.svg" alt="" width="56" height="56" />
         </div>
         <p className="signin-wordmark">
-          Second Brain <span className="pg-pill">Beta</span>
+          Second Brain <span className="beta-tag">Beta</span>
         </p>
         <h1>Sign in to your Second Brain</h1>
         <p className="signin-lede">Your notes, linked into one map, and available to every AI app and agent you use.</p>

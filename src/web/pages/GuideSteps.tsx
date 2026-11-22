@@ -16,7 +16,7 @@ export function GuideSteps({ steps }: { steps: GuideStep[] }) {
               <div className="code-box">
                 <div className="code-head">
                   <span>{step.codeLabel ?? "Copy this"}</span>
-                  <CopyButton text={step.code} className="pg-btn pg-btn-sm pg-btn-ghost" />
+                  <CopyButton text={step.code} className="ghost btn-sm" />
                 </div>
                 {/* One-line snippets wrap; multi-line ones keep their shape and scroll inside the box. */}
                 {step.code.includes("\n") ? <pre>{step.code}</pre> : <code>{step.code}</code>}

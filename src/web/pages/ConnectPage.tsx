@@ -49,7 +49,7 @@ export function ConnectPage({ me }: { me: Me }) {
           <span className="address-label">Your connection address</span>
           <div className="address-row">
             <code>{url}</code>
-            <CopyButton text={url} label="Copy address" className="pg-btn pg-btn-primary pg-btn-lg" />
+            <CopyButton text={url} label="Copy address" className="primary btn-lg" />
           </div>
           <p>The same address works for every app. You only need to sign in to Second Brain when the app asks.</p>
         </div>
@@ -124,7 +124,7 @@ export function ConnectPage({ me }: { me: Me }) {
           <GuideSteps steps={guide.steps} />
           <div className="guide-memory">
             <h3>Make Second Brain its only memory</h3>
-            <p className="pg-muted">
+            <p className="muted">
               Connecting gives {guide.name} the tools; this rule tells it to use them every time. It searches Second Brain before answering anything about
               you, saves what you tell it there, and stops keeping a separate memory of its own.
             </p>
@@ -156,16 +156,16 @@ export function ConnectPage({ me }: { me: Me }) {
 
       <section className="pg-section" aria-labelledby="try-title">
         <h2 id="try-title">Try it</h2>
-        <p className="pg-muted">Ask your app something like this. Naming Second Brain helps the app pick the right tool.</p>
+        <p className="muted">Ask your app something like this. Naming Second Brain helps the app pick the right tool.</p>
         <ul className="prompt-list">
           {TRY_PROMPTS.map((prompt) => (
             <li key={prompt}>
               <span>{prompt}</span>
-              <CopyButton text={prompt} className="pg-btn pg-btn-sm pg-btn-ghost" />
+              <CopyButton text={prompt} className="ghost btn-sm" />
             </li>
           ))}
         </ul>
-        <p className="pg-muted">Notes an app saves appear on the map straight away, and every action is listed under Activity.</p>
+        <p className="muted">Notes an app saves appear on the map straight away, and every action is listed under Activity.</p>
       </section>
 
       <section className="pg-section" aria-labelledby="help-title">

@@ -91,11 +91,11 @@ export function ImportPage({ onDone }: { onDone(): void }) {
         </span>
         <strong>{running ? "Importing your vault" : "Choose your vault folder"}</strong>
         <span className="drop-hint">The folder that holds your .obsidian folder. Hidden folders and files that are not markdown are skipped.</span>
-        <span className="pg-btn pg-btn-primary drop-button" aria-hidden="true">
+        <span className="button primary drop-button" aria-hidden="true">
           Choose vault folder
         </span>
       </label>
-      <p className="pg-muted pg-small">Free accounts can import about 3,500 notes a day.</p>
+      <p className="muted pg-small">Free accounts can import about 3,500 notes a day.</p>
 
       {empty && (
         <p className="callout" role="status">

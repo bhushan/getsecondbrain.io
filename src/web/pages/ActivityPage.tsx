@@ -57,7 +57,7 @@ export function ActivityPage({ onOpen }: { onOpen(id: string): void }) {
                   <p>
                     <strong>{entry.actor.kind === "app" ? entry.actor.app : "You"}</strong> {describeAction(entry.action)}{" "}
                     {entry.noteId && (
-                      <button type="button" className="pg-link" onClick={() => onOpen(entry.noteId!)}>
+                      <button type="button" className="link" onClick={() => onOpen(entry.noteId!)}>
                         a note
                       </button>
                     )}

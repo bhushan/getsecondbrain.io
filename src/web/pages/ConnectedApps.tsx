@@ -10,7 +10,7 @@ const createdMs = (createdAt: number) => createdAt * (createdAt < 1e12 ? 1000 : 
 export function ConnectedApps({ connections, reload }: { connections: Connection[] | null; reload(): void }) {
   return (
     <>
-      {connections === null && <p className="pg-muted">Loading…</p>}
+      {connections === null && <p className="muted">Loading…</p>}
       {connections?.length === 0 && (
         <div className="empty-card">
           <AppMark id={undefined} />
@@ -28,7 +28,7 @@ export function ConnectedApps({ connections, reload }: { connections: Connection
                   {connection.workspaceName ?? "Unknown workspace"}, {connection.canWrite ? "can read and write" : "read only"}, since {when(createdMs(connection.createdAt))}
                 </span>
               </div>
-              <button type="button" className="pg-btn pg-btn-sm" onClick={() => void api.disconnect(connection.id).then(reload)}>
+              <button type="button" className="danger btn-sm" onClick={() => void api.disconnect(connection.id).then(reload)}>
                 Disconnect
               </button>
             </li>
@@ -36,7 +36,7 @@ export function ConnectedApps({ connections, reload }: { connections: Connection
         </ul>
       )}
       {connections !== null && (
-        <button type="button" className="pg-link" onClick={reload}>
+        <button type="button" className="link" onClick={reload}>
           Refresh the list
         </button>
       )}

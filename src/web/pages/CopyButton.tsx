@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 /** Copies text to the clipboard and says so for a moment. */
-export function CopyButton({ text, label = "Copy", className = "pg-btn" }: { text: string; label?: string; className?: string }) {
+export function CopyButton({ text, label = "Copy", className }: { text: string; label?: string; className?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
