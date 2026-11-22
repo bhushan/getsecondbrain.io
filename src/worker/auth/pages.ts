@@ -165,9 +165,12 @@ ${body}
 </main></body></html>`;
 }
 
-/** The app's own logo when its name exactly matches a known app, otherwise its first letter. */
-function appTile(clientName: string): string {
-  const id = KNOWN_APPS[normalise(clientName)];
+/**
+ * The app's own logo when its name exactly matches a known app AND its domain is verified, otherwise its
+ * first letter. A self-registered name is not proof, so it never borrows a real app's logo.
+ */
+function appTile(clientName: string, verified: boolean): string {
+  const id = verified ? KNOWN_APPS[normalise(clientName)] : undefined;
   const logo = id ? appLogo(id) : undefined;
   if (logo) return `<span class="tile"><img src="${logo.src}" alt=""${logo.mono ? ' class="logo-mono"' : ""} width="32" height="32"></span>`;
   return `<span class="tile"><span class="monogram">${escape([...clientName][0] ?? "?")}</span></span>`;
@@ -192,7 +195,7 @@ export function consentPage(view: ConsentView): string {
   return shell(
     `Connect ${view.clientName}`,
     `<section class="card" aria-labelledby="title">
-<div class="pair" aria-hidden="true">${appTile(view.clientName)}<span class="dots"><i></i><i></i><i></i></span><span class="tile brand-tile"><img src="/logo.svg" alt="" width="56" height="56"></span></div>
+<div class="pair" aria-hidden="true">${appTile(view.clientName, Boolean(view.clientDomain))}<span class="dots"><i></i><i></i><i></i></span><span class="tile brand-tile"><img src="/logo.svg" alt="" width="56" height="56"></span></div>
 <h1 id="title">Connect ${name} to Second Brain</h1>
 <p class="lede" aria-live="polite"><span class="if-write">${name} will be able to search, read, create and edit notes in the workspace you choose.</span><span class="if-read">${name} will be able to search and read notes in the workspace you choose.</span></p>
 <ul class="facts">${publisher}<li>${ICONS.send}<span>Access will be sent to <strong>${escape(view.redirectHost)}</strong></span></li></ul>

@@ -22,10 +22,17 @@ describe("consent page", () => {
     expect(html).toContain('src="/logo.svg"');
   });
 
-  it("shows a known app's own logo, marked mono when it is single-colour", () => {
-    expect(consentPage(view({ clientName: "Claude Code" }))).toContain('src="/logos/claude-code.svg"');
-    expect(consentPage(view({ clientName: "chatgpt" }))).toMatch(/src="\/logos\/chatgpt.svg"[^>]*class="logo-mono"/);
-    expect(consentPage(view({ clientName: "Visual Studio Code" }))).toContain('src="/logos/vscode.svg"');
+  it("shows a known app's own logo when its domain is verified, marked mono when it is single-colour", () => {
+    const verified = (clientName: string) => consentPage(view({ clientName, clientDomain: "app.example" }));
+    expect(verified("Claude Code")).toContain('src="/logos/claude-code.svg"');
+    expect(verified("chatgpt")).toMatch(/src="\/logos\/chatgpt.svg"[^>]*class="logo-mono"/);
+    expect(verified("Visual Studio Code")).toContain('src="/logos/vscode.svg"');
+  });
+
+  it("never lends a real app's logo to an app that only registered itself under that name", () => {
+    const html = consentPage(view({ clientName: "Claude", clientDomain: undefined }));
+    expect(html).not.toContain("/logos/");
+    expect(html).toContain('<span class="monogram">C</span>');
   });
 
   it("shows a monogram, not a borrowed logo, for an app whose name only resembles a known one", () => {
