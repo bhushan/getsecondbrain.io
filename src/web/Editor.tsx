@@ -14,24 +14,35 @@ interface Props {
   onSave(): void;
 }
 
+// Colours come from the design tokens, so the editor follows the light and dark themes with the rest of the app.
 const theme = EditorView.theme({
-  "&": { height: "100%", fontSize: "16px", backgroundColor: "transparent", color: "var(--ink)" },
-  ".cm-scroller": { fontFamily: "var(--font-text)", lineHeight: "1.65" },
-  ".cm-content": { padding: "12px 0", caretColor: "var(--ink)" },
+  "&": { height: "100%", fontSize: "15px", backgroundColor: "transparent", color: "var(--foreground)" },
+  ".cm-scroller": { fontFamily: "var(--font-sans)", lineHeight: "1.7", fontFeatureSettings: '"cv11", "ss01"' },
+  ".cm-content": { padding: "16px 0 32px", caretColor: "var(--brand-violet)" },
   ".cm-gutters": { display: "none" },
   ".cm-activeLine": { backgroundColor: "transparent" },
   "&.cm-focused": { outline: "none" },
-  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "var(--select) !important" },
-  ".cm-cursor": { borderLeftColor: "var(--ink)" },
+  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": {
+    backgroundColor: "color-mix(in oklab, var(--brand-violet) 22%, transparent) !important",
+  },
+  ".cm-cursor": { borderLeftColor: "var(--brand-violet)", borderLeftWidth: "2px" },
+  ".cm-matchingBracket, &.cm-focused .cm-matchingBracket": { backgroundColor: "var(--accent)", outline: "none" },
+  ".cm-placeholder": { color: "var(--muted-foreground)" },
+  ".cm-panels": { backgroundColor: "var(--popover)", color: "var(--foreground)", borderColor: "var(--border)" },
+  ".cm-tooltip": { backgroundColor: "var(--popover)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" },
 });
 
-// Quiet markdown colouring: headings bold, links in the action colour, no underlines.
+// Quiet markdown colouring: headings larger and bold, links in the brand colour, code in mono.
 const highlight = HighlightStyle.define([
-  { tag: tags.heading, fontWeight: "600" },
+  { tag: tags.heading1, fontWeight: "650", fontSize: "1.45em", letterSpacing: "-0.02em" },
+  { tag: tags.heading2, fontWeight: "650", fontSize: "1.2em", letterSpacing: "-0.015em" },
+  { tag: [tags.heading3, tags.heading4, tags.heading5, tags.heading6], fontWeight: "600" },
   { tag: tags.strong, fontWeight: "600" },
   { tag: tags.emphasis, fontStyle: "italic" },
-  { tag: [tags.link, tags.url], color: "var(--action)" },
-  { tag: [tags.monospace, tags.processingInstruction, tags.meta], color: "var(--muted)" },
+  { tag: tags.strikethrough, textDecoration: "line-through" },
+  { tag: [tags.link, tags.url], color: "var(--brand-ink)" },
+  { tag: tags.monospace, fontFamily: "var(--font-mono)", fontSize: "0.9em" },
+  { tag: [tags.processingInstruction, tags.meta, tags.quote, tags.contentSeparator], color: "var(--muted-foreground)" },
 ]);
 
 /** Plain markdown editing: the text is the note, nothing is converted. */
