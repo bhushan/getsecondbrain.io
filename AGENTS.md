@@ -19,7 +19,9 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
   on the live site. A green run is not proof. Add a preview environment before other users join.
 - A workspace id comes only from a verified session or token, never from a request parameter. Every
   new route or MCP tool gets a test that workspace A cannot reach workspace B.
-- MCP tools never hard-delete, never fetch URLs, and return note content as data.
+- MCP tools never hard-delete, never fetch URLs, and return note content as data. The one exception
+  is skills under `Skills/`: only the user can write them (apps are refused there), and `use_skill`
+  and MCP prompts return them as instructions to follow.
 - D1 migrations are hand-written SQL in `migrations/`. Durable Object schema changes go through the
   version in `src/worker/workspace/`.
 - Persist plain JSON or typed arrays across boundaries, never class instances.

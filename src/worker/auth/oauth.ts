@@ -57,7 +57,7 @@ export function servers(env: Env): Servers {
           const scopes: Scope[] = [];
           if (ctx.auth.scope.includes(READ_SCOPE)) scopes.push("read");
           if (ctx.auth.scope.includes(WRITE_SCOPE)) scopes.push("write");
-          const principal: Principal = { userId: props.userId, workspaceId: props.workspaceId, app: props.app, scopes };
+          const principal: Principal = { userId: props.userId, workspaceId: props.workspaceId, app: props.app || "Unnamed app", scopes };
           return handleMcp(request, env, ctx, principal);
         },
       },
@@ -118,7 +118,8 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
       const scope = form.get("write") === "on" ? [READ_SCOPE, WRITE_SCOPE, "offline_access"] : [READ_SCOPE, "offline_access"];
       const approved = await oauth.approveConsent(request, handle, { scope });
       const details = await oauth.describeConsent(approved.request);
-      const app = details.clientDomain ?? details.clientName;
+      // Never empty: an MCP caller with no app name would be treated as the user.
+      const app = details.clientDomain || details.clientName || "Unnamed app";
       const { redirectTo } = await oauth.completeAuthorization({
         request: approved.request,
         userId: user.id,

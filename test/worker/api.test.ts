@@ -115,3 +115,30 @@ describe("graph", () => {
     expect(bad.status).toBe(400);
   });
 });
+
+describe("skills over the API", () => {
+  it("lets the signed-in user write skills as notes and lists them", async () => {
+    const { api } = await signIn();
+    expect((await put(api, { path: "Skills/Writing/Blog post", body: "---\nname: Blog post\ndescription: Write a post.\n---\nSteps" })).status).toBe(201);
+    const { skills } = (await (await api("/api/skills")).json()) as { skills: unknown[] };
+    expect(skills).toEqual([{ path: "Skills/Writing/Blog post", slug: "writing-blog-post", name: "Blog post", description: "Write a post.", bundle: "Writing" }]);
+  });
+
+  it("moves a skill to another bundle and saves its new text at the same revision, the way the Skills page edits", async () => {
+    const { api } = await signIn();
+    const created = (await (await put(api, { path: "Skills/Writing/Post", body: "v1", expectedRev: 0 })).json()) as { note: { id: string; rev: number } };
+    const moved = await api("/api/notes/rename", { method: "POST", body: JSON.stringify({ id: created.note.id, path: "Skills/Blog/Post" }) });
+    expect(moved.status).toBe(200);
+    expect((await put(api, { path: "Skills/Blog/Post", body: "v2", expectedRev: created.note.rev })).status).toBe(200);
+    const { skills } = (await (await api("/api/skills")).json()) as { skills: { bundle: string }[] };
+    expect(skills).toMatchObject([{ bundle: "Blog" }]);
+  });
+
+  it("never lists another user's skills", async () => {
+    const alice = await signIn();
+    const bob = await signIn();
+    await put(alice.api, { path: "Skills/Secret", body: "alice only" });
+    expect(((await (await bob.api("/api/skills")).json()) as { skills: unknown[] }).skills).toEqual([]);
+    expect((await bob.api("/api/skills", { headers: { "x-workspace": alice.workspaceId } })).status).toBe(403);
+  });
+});

@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { ulid } from "../lib/ids";
 import { rewriteLinks, scanMarkdown } from "../lib/markdown";
 import { type NotePath, parsePath } from "../lib/paths";
+import { assignSlugs, isSkillPath, parseSkill, SKILLS_FOLDER } from "../lib/skills";
 import { MIGRATIONS } from "./schema";
 import type {
   Actor,
@@ -16,6 +17,8 @@ import type {
   SaveInput,
   SaveResult,
   SearchHit,
+  SkillDetail,
+  SkillSummary,
   Stats,
 } from "./types";
 
@@ -36,6 +39,7 @@ interface NoteRow extends Row {
 const META_COLUMNS = "n.id, n.path, n.title, n.rev, n.created_at, n.updated_at";
 const MAX_DEPTH = 3;
 const MAX_LIMIT = 200;
+const MAX_SKILLS = 500;
 const RATE_BURST = 60;
 const RATE_PER_SECOND = 1;
 
@@ -210,6 +214,30 @@ export class Workspace extends DurableObject<Env> {
     return rows.toArray().map(toMeta);
   }
 
+  /** The skill library: live notes under Skills/, sorted by path, without their instructions. */
+  listSkills(): SkillSummary[] {
+    return this.skills().map(({ instructions: _, ...summary }) => summary);
+  }
+
+  /** One skill with its instructions, by slug, or else by name in any letter case. */
+  getSkill(nameOrSlug: string): SkillDetail | null {
+    const skills = this.skills();
+    const name = nameOrSlug.trim().toLowerCase();
+    return skills.find((skill) => skill.slug === name) ?? skills.find((skill) => skill.name.toLowerCase() === name) ?? null;
+  }
+
+  private skills(): SkillDetail[] {
+    const rows = this.sql
+      .exec<{ path: string; body: string }>(
+        "SELECT path, body FROM notes WHERE deleted_at IS NULL AND (folder = ? OR folder LIKE ?) ORDER BY path COLLATE NOCASE LIMIT ?",
+        SKILLS_FOLDER,
+        `${SKILLS_FOLDER}/%`,
+        MAX_SKILLS,
+      )
+      .toArray();
+    return assignSlugs(rows.map((row) => parseSkill(row.path, row.body)));
+  }
+
   listTags(): { tag: string; count: number }[] {
     return this.sql
       .exec<{ tag: string; count: number }>("SELECT tag, COUNT(*) AS count FROM tags GROUP BY tag ORDER BY tag")
@@ -344,6 +372,7 @@ export class Workspace extends DurableObject<Env> {
 
   saveNote(input: SaveInput): SaveResult {
     const target = parsePath(input.path);
+    if (input.actor.kind === "app" && isSkillPath(target.path)) return { status: "protected" };
     return this.ctx.storage.transactionSync(() => {
       const existing = this.liveByPath(target.path);
       const now = Date.now();
@@ -391,6 +420,7 @@ export class Workspace extends DurableObject<Env> {
     return this.ctx.storage.transactionSync(() => {
       const note = this.liveById(input.id);
       if (!note) return { status: "not_found" };
+      if (input.actor.kind === "app" && (isSkillPath(note.path) || isSkillPath(target.path))) return { status: "protected" };
       const taken = this.liveByPath(target.path);
       if (taken && taken.rowid !== note.rowid) return { status: "exists" };
       if (taken && note.path === target.path) return { status: "renamed", note: toMeta(note) };

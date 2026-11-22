@@ -50,6 +50,14 @@ export interface AuditEntry {
   noteId: string | null;
   at: number;
 }
+export interface SkillSummary {
+  path: string;
+  slug: string;
+  name: string;
+  description: string;
+  bundle: string | null;
+}
+
 export type SaveResult =
   | { status: "created" | "updated" | "unchanged" | "conflict"; note: NoteMeta }
   | { status: "not_found" };
@@ -99,6 +107,7 @@ export const api = {
     request<{ status: string; note?: NoteMeta }>("/api/notes/rename", send("POST", { id, path }), [404, 409]),
   trash: (id: string) => request<{ ok: true }>("/api/notes/trash", send("POST", { id })),
   restore: (id: string) => request<NoteMeta>("/api/notes/restore", send("POST", { id })),
+  skills: () => request<{ skills: SkillSummary[] }>("/api/skills"),
   trashList: () => request<{ notes: NoteMeta[] }>("/api/trash"),
   activity: () => request<{ entries: AuditEntry[] }>("/api/activity"),
   connections: () => request<{ connections: Connection[] }>("/api/connections"),
