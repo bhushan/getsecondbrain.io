@@ -5,21 +5,23 @@ import { connectGuides } from "./connectGuides";
 import { type GraphHandle, GraphView } from "./GraphView";
 import { Icon, type IconName } from "./Icons";
 import { NotePanel } from "./NotePanel";
-import { ActivityPage, ConnectPage, ImportPage, SettingsPage, SignIn, SkillsPage, TrashPage } from "./pages";
+import { ActivityPage, ConnectPage, SettingsPage, SignIn, SkillsPage, SourcesPage, TrashPage } from "./pages";
 import { Search } from "./Search";
 
-type Page = "map" | "skills" | "connect" | "import" | "trash" | "activity" | "settings";
+type Page = "map" | "skills" | "connect" | "sources" | "trash" | "activity" | "settings";
 /** Pages in the dock, plus Settings, which opens from the workspace menu and the account row. */
 const PAGES: { id: Page; label: string; short: string; icon: IconName; path: string; inDock?: false }[] = [
   { id: "map", label: "Map", short: "Map", icon: "map", path: "/" },
   { id: "skills", label: "Skills", short: "Skills", icon: "skills", path: "/skills" },
-  { id: "connect", label: "Connect apps", short: "Connect", icon: "connect", path: "/connect" },
-  { id: "import", label: "Import", short: "Import", icon: "import", path: "/import" },
+  // AI apps use your notes over MCP; Sources send notes in. Paths stay stable for old links.
+  { id: "connect", label: "AI apps", short: "AI apps", icon: "connect", path: "/connect" },
+  { id: "sources", label: "Sources", short: "Sources", icon: "import", path: "/sources" },
   { id: "activity", label: "Activity", short: "Activity", icon: "activity", path: "/activity" },
   { id: "trash", label: "Trash", short: "Trash", icon: "trash", path: "/trash" },
   { id: "settings", label: "Settings", short: "Settings", icon: "settings", path: "/settings", inDock: false },
 ];
-const pageFromPath = (path: string): Page => PAGES.find((page) => page.path === path)?.id ?? "map";
+/** The one-time import moved into Sources; its old address still lands there. */
+const pageFromPath = (path: string): Page => (path === "/import" ? "sources" : (PAGES.find((page) => page.path === path)?.id ?? "map"));
 const WORKSPACE_KEY = "sb.workspace";
 const initial = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 
@@ -224,7 +226,7 @@ export function App() {
           </div>
         )}
         {stats?.nodes === 0 && !panelOpen && page === "map" && (
-          <EmptyMap mcpUrl={me.mcpUrl} onConnect={() => go("connect")} onImport={() => go("import")} onWrite={newNote} />
+          <EmptyMap mcpUrl={me.mcpUrl} onConnect={() => go("connect")} onImport={() => go("sources")} onWrite={newNote} />
         )}
       </div>
 
@@ -339,7 +341,7 @@ export function App() {
         <div className="sheet page-sheet">
           {page === "skills" && <SkillsPage onChanged={refresh} />}
           {page === "connect" && <ConnectPage me={me} onSkills={() => go("skills")} />}
-          {page === "import" && <ImportPage onDone={refresh} />}
+          {page === "sources" && <SourcesPage onChanged={refresh} />}
           {page === "trash" && <TrashPage onChanged={refresh} />}
           {page === "activity" && <ActivityPage onOpen={open} />}
           {page === "settings" && (

@@ -39,7 +39,7 @@ export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
     <main className="page page-connect">
       <section className="connect-hero" aria-labelledby="connect-title">
         <div className="connect-hero-glow" aria-hidden="true" />
-        <p className="pg-eyebrow">Connect</p>
+        <p className="pg-eyebrow">AI apps</p>
         <h1 id="connect-title">Connect any AI app or agent</h1>
         <p className="pg-lede">
           Chat apps, code editors and terminal agents, on any device, all connect with the same address. Once connected, an app can search your notes,

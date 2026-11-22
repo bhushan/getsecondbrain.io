@@ -321,7 +321,7 @@ type Gate = { workspace: Context["workspace"] } | { refused: ToolResult };
  */
 export async function openWorkspace(env: Env, principal: Principal, action: string, scope: Scope): Promise<Gate> {
   if (!principal.scopes.includes(scope)) {
-    return { refused: error("This connection is read-only. The user can allow writing from the Connected apps page.") };
+    return { refused: error("This connection is read-only. The user can allow writing from the AI apps page.") };
   }
   const workspace = env.WORKSPACE.getByName(principal.workspaceId);
   if (principal.app && !(await workspace.checkIn(actorOf(principal), action, scope === "read"))) {

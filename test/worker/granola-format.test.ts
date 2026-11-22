@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meetingPath, parseMeetings, parseSearchPage, renderMeeting } from "../../src/worker/sources/granolaFormat";
+import { MEETINGS_HUB, meetingPath, parseMeetings, parseSearchPage, renderMeeting } from "../../src/worker/sources/granolaFormat";
 import { parsePath } from "../../src/worker/lib/paths";
 import { getMeetingsXml, SEARCH_EMPTY, SEARCH_PAGE_1, SEARCH_PAGE_2 } from "./granola-fixtures";
 
@@ -71,6 +71,11 @@ describe("the note written for a meeting", () => {
     expect(body).toContain("## Summary\n\n# Decisions\n\n- Ship it");
     expect(body).toContain("## My notes\n\nremember x");
     expect(body).toContain("Ada (note creator)");
+  });
+
+  it("links to the Meetings hub note", () => {
+    const [meeting] = parseMeetings(getMeetingsXml([{ id: "m-1", title: "Roadmap" }]));
+    expect(renderMeeting(meeting!)).toContain(`Part of [[${MEETINGS_HUB}]]`);
   });
 
   it("leaves out empty private notes", () => {

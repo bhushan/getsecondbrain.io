@@ -69,6 +69,10 @@ export type SaveResult =
   | { status: "created" | "updated" | "unchanged" | "conflict"; note: NoteMeta }
   | { status: "not_found" };
 
+import type { Source, SyncResult } from "./sourceTypes";
+
+export type { Source, SyncResult };
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -124,5 +128,9 @@ export const api = {
   emptyTrash: () => request<{ deleted: number }>("/api/trash/empty", send("POST", {})),
   activity: () => request<{ entries: AuditEntry[] }>("/api/activity"),
   connections: () => request<{ connections: Connection[] }>("/api/connections"),
+  sources: () => request<{ sources: Source[] }>("/api/sources"),
+  connectGranola: () => request<{ url: string }>("/api/sources/granola/connect", { method: "POST" }),
+  syncGranola: () => request<SyncResult>("/api/sources/granola/sync", { method: "POST" }),
+  disconnectGranola: () => request<{ ok: true }>("/api/sources/granola", { method: "DELETE" }),
   disconnect: (id: string) => request<{ ok: true }>(`/api/connections?id=${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

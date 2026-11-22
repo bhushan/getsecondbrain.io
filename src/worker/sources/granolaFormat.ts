@@ -15,6 +15,16 @@ export interface Meeting {
 }
 
 export const MEETINGS_FOLDER = "Meetings";
+/** The parent note every meeting note links to, so meetings form one cluster on the map. */
+export const MEETINGS_HUB = "Meetings";
+
+export const MEETINGS_HUB_BODY = `---
+tags: [meeting, hub]
+---
+
+Every meeting note synced from Granola links here. See "Linked from" for all of them, newest in the
+Meetings folder. Edit this note freely: syncing never changes it.
+`;
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 
@@ -111,6 +121,7 @@ export function renderMeeting(meeting: Meeting): string {
     "---",
     "",
   ];
+  lines.push(`Part of [[${MEETINGS_HUB}]]`, "");
   if (meeting.participants.length) lines.push("**Participants**", "", ...meeting.participants.map((p) => `- ${p}`), "");
   if (meeting.url) lines.push(`[Open in Granola](${meeting.url})`, "");
   lines.push("## Summary", "", meeting.summary || "_No summary yet._", "");

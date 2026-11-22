@@ -426,3 +426,10 @@ button.danger.confirm:not(:disabled) { color: var(--destructive); border-color: 
   .list-card li:has(.trash-actions, .trash-confirm) { flex-wrap: wrap; }
   .list-card li .trash-actions, .list-card li .trash-confirm { margin-left: auto; }
 }
+
+/* Sources: tools that send notes in. */
+.source-mark { font-weight: 600; font-size: 1rem; color: var(--foreground); }
+.callout[data-kind="error"] { border-color: color-mix(in srgb, var(--destructive) 40%, var(--border)); }
+.callout[data-kind="ok"] { border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
+.page-sources .list-card li { flex-wrap: wrap; }
+.page-sources .list-card .list-text { flex: 1 1 220px; }

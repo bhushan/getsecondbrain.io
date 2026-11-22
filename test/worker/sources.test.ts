@@ -1,3 +1,4 @@
+import { runInDurableObject } from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { eraseDeletedWorkspaces, RESTORE_DAYS } from "../../src/worker/control/workspaceDeletion";
@@ -177,6 +178,29 @@ describe("syncing Granola notes", () => {
     expect(await note(who, trashed.path)).toBeNull();
   });
 
+  it("creates one Meetings hub that every meeting note links to", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    fake.add(meeting("m-1", "Roadmap"));
+    fake.add(meeting("m-2", "Pricing"));
+    await connect(who);
+    await sync(who);
+    await sync(who);
+    const hub = (await (await who.api(`/api/notes?path=${encodeURIComponent("Meetings")}`)).json()) as { backlinks: { path: string }[]; rev: number };
+    expect(hub.backlinks.map((n) => n.path).sort()).toEqual(["Meetings/2026-11-20 Pricing", "Meetings/2026-11-20 Roadmap"]);
+    expect(hub.rev).toBe(1);
+  });
+
+  it("leaves the user's own Meetings hub as it is", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    await who.api("/api/notes", { method: "PUT", body: JSON.stringify({ path: "Meetings", body: "my hub" }) });
+    fake.add(meeting("m-1", "Roadmap"));
+    await connect(who);
+    await sync(who);
+    expect((await note(who, "Meetings"))!.body).toBe("my hub");
+  });
+
   it("keeps two meetings with the same day and title apart", async () => {
     const fake = fakeGranola();
     const who = await signIn();
@@ -196,7 +220,7 @@ describe("syncing Granola notes", () => {
     fake.add(meeting("m-1", "../Skills/evil"));
     await connect(who);
     await sync(who);
-    expect((await recent(who)).every((p) => p.startsWith("Meetings/"))).toBe(true);
+    expect((await recent(who)).every((p) => p === "Meetings" || p.startsWith("Meetings/"))).toBe(true);
     expect(((await (await who.api("/api/skills")).json()) as { skills: unknown[] }).skills).toEqual([]);
   });
 });
@@ -227,6 +251,19 @@ describe("keeping the Granola connection alive", () => {
     fake.tokenFailure = null;
     expect(await sync(who)).toMatchObject({ status: "reconnect" });
     expect(fake.calls.filter((c) => c.url === "https://mcp.granola.ai/mcp")).toHaveLength(mcpCalls);
+  });
+
+  it("asks the user to reconnect when the stored token can no longer be opened", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    await connect(who);
+    // As if the sealing key had changed since the connection was made.
+    await runInDurableObject(env.WORKSPACE.getByName(who.workspaceId), (_instance, state) => {
+      state.storage.sql.exec("UPDATE sources SET tokens = ?", btoa("x".repeat(40)));
+    });
+    expect(await sync(who)).toMatchObject({ status: "reconnect" });
+    expect(await sources(who)).toMatchObject([{ status: "reconnect" }]);
+    expect(fake.calls.filter((c) => c.url === "https://mcp.granola.ai/mcp")).toEqual([]);
   });
 
   it("keeps trying after an outage, and catches up once Granola is back", async () => {

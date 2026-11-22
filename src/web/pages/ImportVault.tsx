@@ -2,7 +2,6 @@ import { useState } from "react";
 import { scanMarkdown } from "../../worker/lib/markdown";
 import { api } from "../api";
 import { notePathFor } from "../importPaths";
-import { PageHeader } from "./PageHeader";
 
 interface ImportProgress {
   total: number;
@@ -22,7 +21,8 @@ interface WorkspaceStats {
 
 const CONCURRENCY = 4;
 
-export function ImportPage({ onDone }: { onDone(): void }) {
+/** One-time import of an Obsidian vault folder, shown on the Sources page. */
+export function ImportVault({ onDone }: { onDone(): void }) {
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [stats, setStats] = useState<WorkspaceStats | null>(null);
   const [empty, setEmpty] = useState(false);
@@ -67,11 +67,12 @@ export function ImportPage({ onDone }: { onDone(): void }) {
   }
 
   return (
-    <main className="page page-import">
-      <PageHeader eyebrow="Import" title="Import an Obsidian vault">
-        Choose your vault folder. Every markdown file becomes a note at the same path, with its links and tags. Importing again only changes notes whose
-        text changed. Your vault on disk is not touched.
-      </PageHeader>
+    <section className="pg-section page-import" aria-labelledby="import-title">
+      <h2 id="import-title">Import an Obsidian vault</h2>
+      <p className="muted">
+        A one-time copy. Choose your vault folder: every markdown file becomes a note at the same path, with its links and tags. Importing again only
+        changes notes whose text changed. Your vault on disk is not touched.
+      </p>
 
       <label className="drop-zone" data-busy={running || undefined}>
         <input
@@ -150,6 +151,6 @@ export function ImportPage({ onDone }: { onDone(): void }) {
           )}
         </section>
       )}
-    </main>
+    </section>
   );
 }

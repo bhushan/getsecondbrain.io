@@ -1,7 +1,7 @@
 import type { Actor, Note, SaveInput, SaveResult } from "../workspace/types";
 import { seal, unseal } from "./crypto";
 import { GranolaAuthError, GranolaMcp, refreshTokens, revokeToken, type Tokens } from "./granolaClient";
-import { meetingPath, parseMeetings, parseSearchPage, renderMeeting, type Meeting } from "./granolaFormat";
+import { MEETINGS_HUB, MEETINGS_HUB_BODY, meetingPath, parseMeetings, parseSearchPage, renderMeeting, type Meeting } from "./granolaFormat";
 
 /**
  * Granola sync, run inside the workspace object so one writer owns the rotating refresh token.
@@ -120,7 +120,14 @@ export async function syncGranola(deps: SyncDeps): Promise<SyncResult> {
   if (row.status !== "active") return { status: "reconnect" };
   const owner = ownerOf(row);
   const startedAt = new Date(now).toISOString();
-  let tokens = await unseal<Tokens>(deps.key, owner, row.tokens);
+  let tokens: Tokens;
+  try {
+    tokens = await unseal<Tokens>(deps.key, owner, row.tokens);
+  } catch {
+    // The sealing key changed or the value is damaged: only a fresh sign-in can fix it.
+    deps.sql.exec("UPDATE sources SET status = 'reconnect', last_error = ? WHERE provider = ?", "Saved Granola access could not be read. Reconnect Granola.", PROVIDER);
+    return { status: "reconnect" };
+  }
 
   try {
     if (tokens.expiresAt - REFRESH_MARGIN_MS <= now) {
@@ -155,6 +162,8 @@ export async function syncGranola(deps: SyncDeps): Promise<SyncResult> {
     const actor: Actor = { kind: "app", id: row.user_id, app: "Granola" };
     const counts = { created: 0, updated: 0, unchanged: 0, skipped: 0 };
     const unique = [...new Set(ids)];
+    // Create the hub once; if it exists (ours or the user's), it is left alone.
+    if (unique.length) deps.saveNote({ path: MEETINGS_HUB, body: MEETINGS_HUB_BODY, expectedRev: 0, actor });
     for (let i = 0; i < unique.length; i += BATCH) {
       const meetings = parseMeetings(await mcp.callTool("get_meetings", { meeting_ids: unique.slice(i, i + BATCH) }));
       for (const meeting of meetings) counts[writeMeeting(deps, actor, meeting)]++;
