@@ -8,22 +8,31 @@ export interface Meeting {
   title: string;
   /** As Granola wrote it, with the meeting's own UTC offset. */
   meetingAt: string;
+  updatedAt: string;
   url: string;
-  participants: string[];
+  /** Names only: Granola's email addresses are not kept. */
+  attendees: string[];
   summary: string;
   privateNotes: string;
 }
 
 export const MEETINGS_FOLDER = "Meetings";
-/** The parent note every meeting note links to, so meetings form one cluster on the map. */
-export const MEETINGS_HUB = "Meetings";
+/**
+ * The parent note every meeting links to, as the Obsidian granola-sync plugin set it up: it lives in
+ * the folder and is linked as [[Meetings]]. The user curates it; syncing only creates it when missing.
+ */
+export const MEETINGS_HUB_PATH = "Meetings/Meetings";
+const HUB_LINK = "[[Meetings]]";
 
 export const MEETINGS_HUB_BODY = `---
+type: hub
 tags: [meeting, hub]
 ---
 
-Every meeting note synced from Granola links here. See "Linked from" for all of them, newest in the
-Meetings folder. Edit this note freely: syncing never changes it.
+# Meetings
+
+Meeting notes synced from Granola, one note per meeting. Each one links here, so "Linked from" lists
+them all. Edit this note freely: syncing never changes it.
 `;
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
@@ -57,6 +66,9 @@ function meetingBlocks(text: string): { open: string; body: string }[] {
   }));
 }
 
+/** "Ada (note creator) from Example (ada@example.com)" becomes "Ada". */
+const attendeeName = (line: string) => line.trim().split(/\s+\(|\s+from\s+/)[0]!.trim();
+
 /** One page of `search_meetings`: meeting ids, and the cursor for the next page when there is one. */
 export function parseSearchPage(text: string): { ids: string[]; nextCursor: string | null } {
   const ids = meetingBlocks(text)
@@ -77,10 +89,11 @@ export function parseMeetings(text: string): Meeting[] {
         id,
         title: attr(open, "title") ?? "",
         meetingAt: attr(open, "meeting_at") ?? "",
+        updatedAt: attr(open, "updated_at") ?? "",
         url: attr(open, "url") ?? "",
-        participants: element(body, "known_participants")
+        attendees: element(body, "known_participants")
           .split("\n")
-          .map((line) => line.trim())
+          .map(attendeeName)
           .filter(Boolean),
         summary: element(body, "summary"),
         privateNotes: element(body, "private_notes"),
@@ -99,6 +112,8 @@ export function meetingPath(meeting: Pick<Meeting, "title" | "meetingAt">): stri
   const title =
     meeting.title
       .replace(/[\u0000-\u001f\u007f/\\[\]|#^]/g, " ")
+      // Characters files cannot hold become "_", as the Obsidian granola-sync plugin named them.
+      .replace(/[:*?"<>]/g, "_")
       .replace(/\s+/g, " ")
       .trim()
       .replace(/^\.+$/, "")
@@ -109,22 +124,35 @@ export function meetingPath(meeting: Pick<Meeting, "title" | "meetingAt">): stri
 
 const yamlString = (value: string) => JSON.stringify(value);
 
-/** The note body: frontmatter that identifies the source, then the summary and the user's own notes. */
+/**
+ * The note body, in the format of the notes the Obsidian granola-sync plugin wrote, so old and new
+ * meeting notes read the same: identifying frontmatter, a link to the hub, the summary, the user's
+ * own notes, then the link back to Granola.
+ */
 export function renderMeeting(meeting: Meeting): string {
   const lines = [
     "---",
-    "source: granola",
-    `source_id: ${yamlString(meeting.id)}`,
-    `meeting_at: ${yamlString(meeting.meetingAt)}`,
-    ...(meeting.url ? [`url: ${yamlString(meeting.url)}`] : []),
+    `granola_id: ${yamlString(meeting.id)}`,
+    `title: ${yamlString(meeting.title)}`,
+    "type: note",
+    `created: ${yamlString(meeting.meetingAt)}`,
+    `updated: ${yamlString(meeting.updatedAt || meeting.meetingAt)}`,
+    ...(meeting.attendees.length ? ["attendees:", ...meeting.attendees.map((name) => `  - ${yamlString(name)}`)] : []),
+    ...(meeting.url ? [`web_url: ${yamlString(meeting.url)}`] : []),
     "tags: [meeting]",
     "---",
     "",
+    `Part of ${HUB_LINK}. Imported from Granola; figures and plans are as of the meeting.`,
+    "",
+    meeting.summary || "_No summary yet._",
+    "",
   ];
-  lines.push(`Part of [[${MEETINGS_HUB}]]`, "");
-  if (meeting.participants.length) lines.push("**Participants**", "", ...meeting.participants.map((p) => `- ${p}`), "");
-  if (meeting.url) lines.push(`[Open in Granola](${meeting.url})`, "");
-  lines.push("## Summary", "", meeting.summary || "_No summary yet._", "");
-  if (meeting.privateNotes) lines.push("## My notes", "", meeting.privateNotes, "");
+  if (meeting.privateNotes) lines.push("# My notes", "", meeting.privateNotes, "");
+  if (meeting.url) lines.push("---", "", `Open in Granola: [${meeting.url}](${meeting.url})`, "");
   return lines.join("\n");
+}
+
+/** Whether a note looks like one written from this Granola meeting, by our sync or the Obsidian plugin. */
+export function isGranolaNote(body: string, meetingId: string): boolean {
+  return /^granola_id:/m.test(body) || body.includes(`notes.granola.ai/d/${meetingId}`);
 }

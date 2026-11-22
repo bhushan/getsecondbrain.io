@@ -124,7 +124,7 @@ describe("syncing Granola notes", () => {
     expect(await sync(who)).toMatchObject({ status: "ok", created: 3 });
     expect(fake.toolCalls("search_meetings")).toHaveLength(2);
     const roadmap = await note(who, "Meetings/2026-11-20 Roadmap");
-    expect(roadmap?.body).toContain('source_id: "m-1"');
+    expect(roadmap?.body).toContain('granola_id: "m-1"');
     expect(roadmap?.body).toContain("- Ship it");
     const activity = (await (await who.api("/api/activity")).json()) as { entries: { actor: { kind: string; app?: string } }[] };
     expect(activity.entries[0]!.actor).toMatchObject({ kind: "app", app: "Granola" });
@@ -157,7 +157,7 @@ describe("syncing Granola notes", () => {
     const moved = (await note(who, "Work/Roadmap call"))!;
     expect(moved.id).toBe(saved.id);
     expect(moved.body).toContain("- New plan");
-    expect((await recent(who)).filter((p) => p.startsWith("Meetings/"))).toEqual([]);
+    expect((await recent(who)).filter((p) => p.startsWith("Meetings/") && p !== "Meetings/Meetings")).toEqual([]);
   });
 
   it("never overwrites a note the user edited, and never brings back a trashed one", async () => {
@@ -186,19 +186,55 @@ describe("syncing Granola notes", () => {
     await connect(who);
     await sync(who);
     await sync(who);
-    const hub = (await (await who.api(`/api/notes?path=${encodeURIComponent("Meetings")}`)).json()) as { backlinks: { path: string }[]; rev: number };
+    const hub = (await (await who.api(`/api/notes?path=${encodeURIComponent("Meetings/Meetings")}`)).json()) as { backlinks: { path: string }[]; rev: number };
     expect(hub.backlinks.map((n) => n.path).sort()).toEqual(["Meetings/2026-11-20 Pricing", "Meetings/2026-11-20 Roadmap"]);
     expect(hub.rev).toBe(1);
+    expect(await note(who, "Meetings")).toBeNull();
   });
 
   it("leaves the user's own Meetings hub as it is", async () => {
     const fake = fakeGranola();
     const who = await signIn();
-    await who.api("/api/notes", { method: "PUT", body: JSON.stringify({ path: "Meetings", body: "my hub" }) });
+    await who.api("/api/notes", { method: "PUT", body: JSON.stringify({ path: "Meetings/Meetings", body: "my hub" }) });
     fake.add(meeting("m-1", "Roadmap"));
     await connect(who);
     await sync(who);
-    expect((await note(who, "Meetings"))!.body).toBe("my hub");
+    expect((await note(who, "Meetings/Meetings"))!.body).toBe("my hub");
+  });
+
+  it("adopts a meeting note the Obsidian plugin already wrote, instead of copying it", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    const plugin = "---\ngranola_id: not_abc\ntitle: Roadmap\ntype: note\n---\n# Hand-curated summary";
+    await who.api("/api/notes", { method: "PUT", body: JSON.stringify({ path: "Meetings/2026-11-20 Roadmap", body: plugin }) });
+    fake.add(meeting("m-1", "Roadmap"));
+    await connect(who);
+    expect(await sync(who)).toMatchObject({ created: 0, adopted: 1 });
+    fake.add(meeting("m-1", "Roadmap", "2099-01-01T00:00:00Z", { summary: "- newer" }));
+    await sync(who);
+    expect((await note(who, "Meetings/2026-11-20 Roadmap"))!.body).toBe(plugin);
+    expect((await recent(who)).filter((p) => p.startsWith("Meetings/2026-11-20 Roadmap"))).toEqual(["Meetings/2026-11-20 Roadmap"]);
+  });
+
+  it("does not adopt a note at the same path that did not come from Granola", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    await who.api("/api/notes", { method: "PUT", body: JSON.stringify({ path: "Meetings/2026-11-20 Roadmap", body: "my own note" }) });
+    fake.add(meeting("m-1", "Roadmap"));
+    await connect(who);
+    expect(await sync(who)).toMatchObject({ created: 1 });
+    expect((await note(who, "Meetings/2026-11-20 Roadmap (2)"))!.body).toContain('granola_id: "m-1"');
+  });
+
+  it("keeps meeting notes after Granola stops sharing them", async () => {
+    const fake = fakeGranola();
+    const who = await signIn();
+    fake.add(meeting("m-1", "Roadmap"));
+    await connect(who);
+    await sync(who);
+    fake.meetings.clear();
+    expect(await sync(who)).toMatchObject({ status: "ok" });
+    expect(await note(who, "Meetings/2026-11-20 Roadmap")).not.toBeNull();
   });
 
   it("keeps two meetings with the same day and title apart", async () => {

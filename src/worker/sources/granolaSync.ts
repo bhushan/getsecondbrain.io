@@ -1,7 +1,7 @@
 import type { Actor, Note, SaveInput, SaveResult } from "../workspace/types";
 import { seal, unseal } from "./crypto";
 import { GranolaAuthError, GranolaMcp, refreshTokens, revokeToken, type Tokens } from "./granolaClient";
-import { MEETINGS_HUB, MEETINGS_HUB_BODY, meetingPath, parseMeetings, parseSearchPage, renderMeeting, type Meeting } from "./granolaFormat";
+import { isGranolaNote, MEETINGS_HUB_BODY, MEETINGS_HUB_PATH, meetingPath, parseMeetings, parseSearchPage, renderMeeting, type Meeting } from "./granolaFormat";
 
 /**
  * Granola sync, run inside the workspace object so one writer owns the rotating refresh token.
@@ -16,6 +16,11 @@ const MAX_PAGES = 50;
 const BATCH = 10;
 const REFRESH_MARGIN_MS = 2 * 60 * 1000;
 const MAX_TITLE_COPIES = 20;
+/** Revision recorded for an adopted note: never a real one, so sync never rewrites it. */
+const ADOPTED_REV = -1;
+
+const isTracked = (sql: SqlStorage, noteId: string) =>
+  sql.exec("SELECT 1 FROM source_items WHERE provider = ? AND note_id = ? LIMIT 1", PROVIDER, noteId).toArray().length > 0;
 
 export interface SourceStatus {
   provider: string;
@@ -31,7 +36,8 @@ export interface SourceStatus {
 }
 
 export type SyncResult =
-  | { status: "ok"; created: number; updated: number; unchanged: number; skipped: number }
+  /** `adopted`: notes already written from Granola (by the Obsidian plugin), linked and left as they are. */
+  | { status: "ok"; created: number; updated: number; unchanged: number; skipped: number; adopted: number }
   | { status: "reconnect" }
   | { status: "error"; error: string }
   | { status: "not_connected" };
@@ -160,10 +166,10 @@ export async function syncGranola(deps: SyncDeps): Promise<SyncResult> {
     } while (cursor);
 
     const actor: Actor = { kind: "app", id: row.user_id, app: "Granola" };
-    const counts = { created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    const counts = { created: 0, updated: 0, unchanged: 0, skipped: 0, adopted: 0 };
     const unique = [...new Set(ids)];
     // Create the hub once; if it exists (ours or the user's), it is left alone.
-    if (unique.length) deps.saveNote({ path: MEETINGS_HUB, body: MEETINGS_HUB_BODY, expectedRev: 0, actor });
+    if (unique.length) deps.saveNote({ path: MEETINGS_HUB_PATH, body: MEETINGS_HUB_BODY, expectedRev: 0, actor });
     for (let i = 0; i < unique.length; i += BATCH) {
       const meetings = parseMeetings(await mcp.callTool("get_meetings", { meeting_ids: unique.slice(i, i + BATCH) }));
       for (const meeting of meetings) counts[writeMeeting(deps, actor, meeting)]++;
@@ -202,7 +208,7 @@ async function accountEmail(mcp: GranolaMcp): Promise<string | null> {
  * Writes one meeting. A meeting seen before updates its own note wherever the user moved it, unless
  * the user edited that note (its revision moved on) or trashed it: then it is left alone.
  */
-function writeMeeting(deps: SyncDeps, actor: Actor, meeting: Meeting): "created" | "updated" | "unchanged" | "skipped" {
+function writeMeeting(deps: SyncDeps, actor: Actor, meeting: Meeting): "created" | "updated" | "unchanged" | "skipped" | "adopted" {
   const body = renderMeeting(meeting);
   const item = deps.sql
     .exec<{ note_id: string; rev: number }>("SELECT note_id, rev FROM source_items WHERE provider = ? AND external_id = ?", PROVIDER, meeting.id)
@@ -231,6 +237,11 @@ function writeMeeting(deps: SyncDeps, actor: Actor, meeting: Meeting): "created"
       return "created";
     }
     if (result.status !== "conflict") return "skipped";
+    // A Granola note already at this path (from the Obsidian plugin) is this meeting: link it, keep it as is.
+    if (copy === 1 && isGranolaNote(deps.getNote(result.note.id)?.body ?? "", meeting.id) && !isTracked(deps.sql, result.note.id)) {
+      deps.sql.exec("INSERT INTO source_items (provider, external_id, note_id, rev) VALUES (?, ?, ?, ?)", PROVIDER, meeting.id, result.note.id, ADOPTED_REV);
+      return "adopted";
+    }
   }
   return "skipped";
 }

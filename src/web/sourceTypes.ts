@@ -10,7 +10,7 @@ export interface Source {
 }
 
 export type SyncResult =
-  | { status: "ok"; created: number; updated: number; unchanged: number; skipped: number }
+  | { status: "ok"; created: number; updated: number; unchanged: number; skipped: number; adopted?: number }
   | { status: "reconnect" }
   | { status: "error"; error: string }
   | { status: "not_connected" };
