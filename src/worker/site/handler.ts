@@ -1,8 +1,8 @@
 import { hosts } from "../config";
-import { SITE_CSP, landingPage, privacyPage, termsPage } from "./pages";
+import { SITE_CSP, landingPage, notFoundPage, privacyPage, termsPage } from "./pages";
 
 /** Static files the site may serve. Nothing else of the app is exposed here. */
-const SITE_FILES = new Set(["/site.js", "/site.css", "/tokens.css", "/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png"]);
+const SITE_FILES = new Set(["/site.js", "/site.css", "/tokens.css", "/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png", "/og/social.png"]);
 /** Folders served whole: the font and the app logos. Names are plain, so no path tricks get through. */
 const SITE_FOLDERS = /^\/(fonts|logos)\/[a-z0-9-]+\.(woff2|svg)$/;
 /** Files that change with the page markup expire with the page; the rest rarely change. */
@@ -29,9 +29,10 @@ export async function handleSite(request: Request, env: Env): Promise<Response> 
   if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
   const path = new URL(request.url).pathname;
   const { appOrigin, mcpResource } = hosts(env);
-  if (path === "/") return html(landingPage(appOrigin, mcpResource));
-  if (path === "/privacy") return html(privacyPage());
-  if (path === "/terms") return html(termsPage(appOrigin));
+  const origins = { app: appOrigin, site: new URL(env.SITE_ORIGIN).origin };
+  if (path === "/") return html(landingPage(origins, mcpResource));
+  if (path === "/privacy") return html(privacyPage(origins));
+  if (path === "/terms") return html(termsPage(origins));
   if (path === "/favicon.ico") return Response.redirect(new URL("/favicon-32.png", request.url).toString(), 301);
   if (SITE_FILES.has(path) || SITE_FOLDERS.test(path)) {
     const asset = await env.ASSETS.fetch(request);
@@ -40,5 +41,5 @@ export async function handleSite(request: Request, env: Env): Promise<Response> 
     response.headers.set("x-content-type-options", "nosniff");
     return response;
   }
-  return html(`<!doctype html><title>Not found</title><p>That page does not exist. <a href="/">Go to Second Brain</a>.</p>`, 404);
+  return html(notFoundPage(origins), 404);
 }
