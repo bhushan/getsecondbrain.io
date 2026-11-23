@@ -32,11 +32,12 @@ describe("MCP tool list", () => {
     expect(names.filter((name) => /delete|remove|erase|purge|fetch|url/.test(name))).toEqual([]);
   });
 
-  it("marks read tools as read-only and write tools as not destructive", () => {
+  it("marks read tools read-only, and only the tools that replace or remove content as destructive", () => {
     for (const tool of TOOLS) {
-      expect(tool.annotations.readOnlyHint).toBe(tool.scope === "read");
-      expect(tool.annotations.destructiveHint).toBe(false);
-      expect(tool.annotations.openWorldHint).toBe(false);
+      expect(tool.annotations.readOnlyHint, tool.name).toBe(tool.scope === "read");
+      expect(tool.annotations.destructiveHint, tool.name).toBe(["update_note", "trash_note"].includes(tool.name));
+      expect(tool.annotations.openWorldHint, tool.name).toBe(false);
+      expect(tool.title, tool.name).toBeTruthy();
     }
   });
 });
