@@ -6,6 +6,7 @@ const view = (overrides: Partial<ConsentView> = {}): ConsentView => ({
   clientDomain: undefined,
   redirectHost: "client.example",
   redirectIsLoopback: false,
+  requestedWrite: true,
   handle: "handle-1",
   email: "me@example.com",
   workspaces: [

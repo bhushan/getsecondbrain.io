@@ -5,6 +5,8 @@ export interface Actor {
   kind: "user" | "app";
   /** User id. */
   id: string;
+  /** Whether the app's identity was checked: a verified metadata domain, or a built-in source. */
+  verified?: boolean;
   /** Connected app (OAuth client) name, when kind is "app". */
   app?: string;
 }

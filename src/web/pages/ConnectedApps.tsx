@@ -1,6 +1,6 @@
 import { api, type Connection } from "../api";
 import { AppMark } from "./AppMark";
-import { appIdForName } from "./appForName";
+import { logoIdFor } from "./appForName";
 import { when } from "./when";
 
 /** Older grants stored seconds; newer ones milliseconds. */
@@ -21,7 +21,7 @@ export function ConnectedApps({ connections, reload }: { connections: Connection
         <ul className="list-card">
           {connections.map((connection) => (
             <li key={connection.id}>
-              <AppMark id={appIdForName(connection.app)} />
+              <AppMark id={logoIdFor(connection)} />
               <div className="list-text">
                 <strong>{connection.app}</strong>
                 <span>

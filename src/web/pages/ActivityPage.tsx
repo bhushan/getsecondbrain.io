@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type AuditEntry } from "../api";
 import { dayLabel, describeAction } from "./activityText";
 import { AppMark } from "./AppMark";
-import { appIdForName } from "./appForName";
+import { logoIdFor } from "./appForName";
 import { PageHeader } from "./PageHeader";
 import { timeOfDay, when } from "./when";
 
@@ -18,7 +18,7 @@ function byDay(entries: AuditEntry[]): { day: string; entries: AuditEntry[] }[] 
 }
 
 function Actor({ entry }: { entry: AuditEntry }) {
-  if (entry.actor.kind === "app") return <AppMark id={appIdForName(entry.actor.app ?? "")} size="sm" />;
+  if (entry.actor.kind === "app") return <AppMark id={logoIdFor(entry.actor)} size="sm" />;
   return (
     <span className="app-mark app-mark-sm actor-you" aria-hidden="true">
       You

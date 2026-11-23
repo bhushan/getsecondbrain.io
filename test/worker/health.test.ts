@@ -38,3 +38,15 @@ it("gives sign-in error pages the app's security headers", async () => {
   expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
   expect(response.headers.get("x-content-type-options")).toBe("nosniff");
 });
+
+it("caches the app's content-hashed files for a year and revalidates its page", async () => {
+  const page = await exports.default.fetch("https://app.test/");
+  expect(page.headers.get("cache-control") ?? "").not.toContain("immutable");
+  const script = (await page.text()).match(/\/assets\/[\w.-]+\.js/)?.[0];
+  expect(script).toBeTruthy();
+  const asset = await exports.default.fetch(`https://app.test${script}`);
+  expect(asset.status).toBe(200);
+  expect(asset.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+  const missing = await exports.default.fetch("https://app.test/assets/nope-123.js");
+  expect(missing.headers.get("cache-control") ?? "").not.toContain("immutable");
+});

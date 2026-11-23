@@ -13,6 +13,8 @@ export interface ConsentView {
   clientDomain?: string;
   redirectHost: string;
   redirectIsLoopback: boolean;
+  /** Whether the app asked for write access. Write stays on by default either way; the page says when it did not. */
+  requestedWrite: boolean;
   handle: string;
   email: string;
   workspaces: { id: string; name: string }[];
@@ -122,6 +124,7 @@ label.perm:hover{background:var(--accent)}
 .tag{flex:none;font-size:var(--text-xs);font-weight:500;color:var(--muted-foreground);background:var(--muted);border-radius:var(--radius-pill);padding:var(--space-1) var(--space-2)}
 .switch{appearance:none;-webkit-appearance:none;margin:0;flex:none;position:relative;width:44px;height:26px;border-radius:var(--radius-pill);background:var(--ring);cursor:pointer;transition:background-color .15s}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm);transition:transform .15s}
+.perm-note{display:block;margin-top:6px;color:var(--foreground);font-weight:500}
 .switch:checked{background:var(--primary)}
 .switch:checked::after{transform:translateX(18px);background:var(--primary-foreground)}
 .if-read{display:none}
@@ -205,7 +208,7 @@ ${loopback}
 <fieldset class="group"><legend>Workspace</legend><div class="options">${workspaces}</div></fieldset>
 <fieldset class="group"><legend>What it can do</legend><div class="perms">
 <div class="perm"><span class="perm-icon">${ICONS.search}</span><span class="perm-text"><span class="perm-title">Search and read notes</span><span class="perm-desc">Find your notes and read them to answer you.</span></span><span class="tag">Always on</span></div>
-<label class="perm" for="write"><span class="perm-icon">${ICONS.pencil}</span><span class="perm-text"><span class="perm-title">Create and edit notes</span><span class="perm-desc">Save new notes and update existing ones. Every edit is kept as a revision.</span></span><input class="switch" type="checkbox" role="switch" id="write" name="write" value="on" checked></label>
+<label class="perm" for="write"><span class="perm-icon">${ICONS.pencil}</span><span class="perm-text"><span class="perm-title">Create and edit notes</span><span class="perm-desc">Save new notes and update existing ones. Every edit is kept as a revision.${view.requestedWrite ? "" : `<span class="perm-note">${name} asked only to read your notes. Turn this off to keep it read only.</span>`}</span></span><input class="switch" type="checkbox" role="switch" id="write" name="write" value="on" checked></label>
 </div></fieldset>
 <div class="promise">${ICONS.shield}<p><strong>Apps can never delete your notes for good.</strong> Anything they trash waits for you to restore. You can disconnect ${name} any time from Connected apps.</p></div>
 <div class="actions"><button class="btn primary" name="decision" value="approve">Connect</button><button class="btn secondary" name="decision" value="deny">Cancel</button></div>

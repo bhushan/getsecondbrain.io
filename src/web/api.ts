@@ -39,13 +39,15 @@ export interface SearchHit {
 export interface Connection {
   id: string;
   app: string;
+  /** Identity checked at connect time; only verified apps show a real logo. */
+  verified: boolean;
   workspaceId: string | null;
   workspaceName: string | null;
   canWrite: boolean;
   createdAt: number;
 }
 export interface AuditEntry {
-  actor: { kind: "user" | "app"; id: string; app?: string };
+  actor: { kind: "user" | "app"; id: string; app?: string; verified?: boolean };
   action: string;
   noteId: string | null;
   at: number;

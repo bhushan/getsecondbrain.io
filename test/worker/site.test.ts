@@ -291,6 +291,13 @@ describe("open source", () => {
     const html = await (await exports.default.fetch(`${SITE}/`)).text();
     expect(html).toContain("Is Second Brain open source?");
     expect(html).toContain(`"sameAs":["${REPO}"]`);
+    const graph = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1]!)["@graph"] as Record<string, unknown>[];
+    expect(graph.find((node) => node["@type"] === "SoftwareSourceCode")).toMatchObject({
+      codeRepository: REPO,
+      license: "https://www.gnu.org/licenses/agpl-3.0.html",
+      programmingLanguage: "TypeScript",
+    });
+    expect(graph.find((node) => node["@type"] === "SoftwareApplication")).toMatchObject({ license: "https://www.gnu.org/licenses/agpl-3.0.html" });
     const llms = await (await exports.default.fetch(`${SITE}/llms.txt`)).text();
     expect(llms).toContain(REPO);
   });

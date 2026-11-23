@@ -104,7 +104,24 @@ describe("notes over the API", () => {
     expect((await put(api, { path: "Huge", body: "x".repeat(1024 * 1024 + 1) })).status).toBe(413);
   });
 
-  it("searches and reports stats", async () => {
+  it("measures a body's size in bytes, and stops reading a streamed body once it is too large", async () => {
+    const { api } = await signIn();
+    const wide = JSON.stringify({ name: "é".repeat(2100) });
+    expect(wide.length).toBeLessThan(4096);
+    expect((await api("/api/workspaces", { method: "POST", body: wide })).status).toBe(413);
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += 1024;
+        if (sent > 64 * 1024) controller.close();
+        else controller.enqueue(new Uint8Array(1024).fill(32));
+      },
+    });
+    expect((await api("/api/workspaces", { method: "POST", body: stream })).status).toBe(413);
+    expect(sent).toBeLessThan(64 * 1024);
+  });
+
+    it("searches and reports stats", async () => {
     const { api } = await signIn();
     await put(api, { path: "Findable", body: "quokka sighting" });
     const search = (await (await api("/api/search?q=quokka")).json()) as { hits: { path: string }[] };

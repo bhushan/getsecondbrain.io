@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appIdForName } from "../../src/web/pages/appForName";
+import { appIdForName, logoIdFor } from "../../src/web/pages/appForName";
 
 describe("appIdForName", () => {
   it("matches an app by its name in any case", () => {
@@ -27,5 +27,11 @@ describe("appIdForName", () => {
 
   it("returns nothing for an app it does not know", () => {
     expect(appIdForName("Some Agent")).toBeUndefined();
+  });
+
+  it("shows a real logo only for an app whose identity was verified", () => {
+    expect(logoIdFor({ app: "claude.ai", verified: true })).toBe("claude");
+    expect(logoIdFor({ app: "Claude", verified: false })).toBeUndefined();
+    expect(logoIdFor({ app: "Claude" })).toBeUndefined();
   });
 });

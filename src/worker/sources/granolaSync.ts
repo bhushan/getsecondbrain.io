@@ -166,7 +166,7 @@ export async function syncGranola(deps: SyncDeps): Promise<SyncResult> {
       if (++pages >= MAX_PAGES && cursor) throw new Error("Granola has more changes than one run can read; the next run continues.");
     } while (cursor);
 
-    const actor: Actor = { kind: "app", id: row.user_id, app: "Granola" };
+    const actor: Actor = { kind: "app", id: row.user_id, app: "Granola", verified: true };
     const counts = { created: 0, updated: 0, unchanged: 0, skipped: 0, adopted: 0 };
     const unique = [...new Set(ids)];
     // Create the hub once; if it exists (ours or the user's), it is left alone.
