@@ -1,0 +1,205 @@
+import { useEffect, useState } from "react";
+import { api, type Connection, type Me } from "../api";
+import { connectGuides, SKILL_PROMPTS, TRY_PROMPTS } from "../connectGuides";
+import { AppMark } from "./AppMark";
+import { ConnectedApps } from "./ConnectedApps";
+import { CopyButton } from "./CopyButton";
+import { GuideSteps } from "./GuideSteps";
+import { Troubleshooting } from "./Troubleshooting";
+
+const GUIDE_KEY = "sb.connect-app";
+
+function readGuide(): string {
+  try {
+    return localStorage.getItem(GUIDE_KEY) ?? "claude";
+  } catch {
+    return "claude";
+  }
+}
+
+export function ConnectPage({ me, onSkills }: { me: Me; onSkills(): void }) {
+  const [connections, setConnections] = useState<Connection[] | null>(null);
+  const load = () => void api.connections().then(({ connections }) => setConnections(connections));
+  useEffect(load, []);
+  const url = me.mcpUrl;
+  const guides = connectGuides(url);
+  const [active, setActive] = useState(readGuide);
+  const guide = guides.find((item) => item.id === active) ?? guides[0]!;
+  const choose = (id: string) => {
+    setActive(id);
+    try {
+      localStorage.setItem(GUIDE_KEY, id);
+    } catch {
+      /* the choice just is not remembered */
+    }
+  };
+  const connected = connections?.length ?? 0;
+
+  return (
+    <main className="page page-connect">
+      <section className="connect-hero" aria-labelledby="connect-title">
+        <div className="connect-hero-glow" aria-hidden="true" />
+        <p className="pg-eyebrow">AI apps</p>
+        <h1 id="connect-title">Connect any AI app or agent</h1>
+        <p className="pg-lede">
+          Chat apps, code editors and terminal agents, on any device, all connect with the same address. Once connected, an app can search your notes,
+          read them, save new ones and move old ones to the trash, but only in the workspace you choose. Only you can delete a note for good.
+        </p>
+        <div className="address-card">
+          <span className="address-label">Your connection address</span>
+          <div className="address-row">
+            <code>{url}</code>
+            <CopyButton text={url} label="Copy address" className="primary btn-lg" />
+          </div>
+          <p>The same address works for every app. You only need to sign in to Second Brain when the app asks.</p>
+        </div>
+        <div className="hero-foot">
+          <ul className="hero-logos" aria-label="Works with">
+            {guides.map((item) => (
+              <li key={item.id} title={item.name}>
+                <AppMark id={item.id} size="sm" />
+                <span className="sr-only">{item.name}</span>
+              </li>
+            ))}
+          </ul>
+          {connections !== null && (
+            <a className="pg-pill hero-status" href="#connected-apps" data-on={connected > 0 || undefined}>
+              <span className="status-dot" aria-hidden="true" />
+              {connected === 0 ? "No apps connected yet" : connected === 1 ? "1 app connected" : `${connected} apps connected`}
+            </a>
+          )}
+        </div>
+      </section>
+
+      <section className="pg-section" aria-labelledby="flow-title">
+        <h2 id="flow-title">How connecting works</h2>
+        <ol className="flow-cards">
+          <li>
+            <span className="flow-num">1</span>
+            <p>Add the address above to your app, using the steps for that app below.</p>
+          </li>
+          <li>
+            <span className="flow-num">2</span>
+            <p>The app opens a Second Brain page. Sign in with Google, choose a workspace, and choose whether the app may create and edit notes.</p>
+          </li>
+          <li>
+            <span className="flow-num">3</span>
+            <p>Choose Connect. The app now has Second Brain tools, and it shows up under Connected apps at the bottom of this page.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section className="pg-section" aria-labelledby="apps-heading">
+        <h2 id="apps-heading">Pick your app</h2>
+        <div className="app-grid" role="tablist" aria-labelledby="apps-heading">
+          {guides.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              id={`tab-${item.id}`}
+              aria-selected={item.id === guide.id}
+              aria-controls="guide-panel"
+              className="app-tile"
+              onClick={() => choose(item.id)}
+            >
+              <AppMark id={item.id} />
+              <span className="app-tile-text">
+                <strong>{item.name}</strong>
+                <span>{item.where}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="guide-card" role="tabpanel" id="guide-panel" aria-labelledby={`tab-${guide.id}`}>
+          <div className="guide-head">
+            <AppMark id={guide.id} size="lg" />
+            <div>
+              <h3>{guide.name}</h3>
+              <p>{guide.where}</p>
+            </div>
+          </div>
+          {guide.note && <p className="callout">{guide.note}</p>}
+          <GuideSteps steps={guide.steps} />
+          <div className="guide-memory">
+            <h3>Make Second Brain its only memory</h3>
+            <p className="muted">
+              Connecting gives {guide.name} the tools; this rule tells it to use them every time. It searches Second Brain before answering anything about
+              you, saves what you tell it there, and stops keeping a separate memory of its own.
+            </p>
+            <GuideSteps steps={guide.memory} />
+          </div>
+        </div>
+      </section>
+
+      <section className="pg-section" aria-labelledby="consent-title">
+        <h2 id="consent-title">On the Second Brain page</h2>
+        <dl className="consent-grid">
+          <div>
+            <dt>Workspace it can use</dt>
+            <dd>The app sees only this workspace. To give an app a different workspace, disconnect it and connect again.</dd>
+          </div>
+          <div>
+            <dt>Search and read notes</dt>
+            <dd>Always on. The app can search, open notes, follow links and list tags.</dd>
+          </div>
+          <div>
+            <dt>Create and edit notes</dt>
+            <dd>
+              Untick it for read only. When ticked, the app can save new notes, add to notes and link them. It can also move notes to the trash, where you
+              can restore them. Every change keeps the earlier version, and only you can delete a note for good.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="pg-section" aria-labelledby="try-title">
+        <h2 id="try-title">Try it</h2>
+        <p className="muted">Ask your app something like this. Naming Second Brain helps the app pick the right tool.</p>
+        <ul className="prompt-list">
+          {TRY_PROMPTS.map((prompt) => (
+            <li key={prompt}>
+              <span>{prompt}</span>
+              <CopyButton text={prompt} className="ghost btn-sm" />
+            </li>
+          ))}
+        </ul>
+        <p className="muted">Notes an app saves appear in your network straight away, and every action is listed under Activity.</p>
+      </section>
+
+      <section className="pg-section" aria-labelledby="skills-title">
+        <h2 id="skills-title">Use your skills</h2>
+        <p className="muted">
+          Every connected app can also use the skills you write on the Skills page: instructions such as how to write a post in your voice or how you
+          review code. Apps follow the skill that fits a task, or the one you name. Apps you allow to write can add and update skills too, and every change keeps its earlier version.
+        </p>
+        <ul className="prompt-list">
+          {SKILL_PROMPTS.map((prompt) => (
+            <li key={prompt}>
+              <span>{prompt}</span>
+              <CopyButton text={prompt} className="ghost btn-sm" />
+            </li>
+          ))}
+        </ul>
+        <p className="muted">
+          An app connected before you added a skill sees it the next time it looks. Apps that offer skills in their menu, such as Claude Code, list
+          new ones in a new session.{" "}
+          <button type="button" className="link" onClick={onSkills}>
+            Open the Skills page
+          </button>
+        </p>
+      </section>
+
+      <section className="pg-section" aria-labelledby="help-title">
+        <h2 id="help-title">If something goes wrong</h2>
+        <Troubleshooting url={url} />
+      </section>
+
+      <section className="pg-section" id="connected-apps" aria-labelledby="connected-title">
+        <h2 id="connected-title">Connected apps</h2>
+        <ConnectedApps connections={connections} reload={load} />
+      </section>
+    </main>
+  );
+}

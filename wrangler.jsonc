@@ -1,0 +1,63 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "getsecondbrain",
+  "account_id": "1c29669225d2ab41354abd9c518f4822",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-21",
+  // global_fetch_strictly_public: client metadata documents (CIMD) are fetched only from public hosts.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "observability": { "enabled": true },
+  "workers_dev": false,
+  // Every request reaches the Worker first: it routes by hostname and adds security headers.
+  "assets": {
+    "directory": "./dist/web",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "WORKSPACE", "class_name": "Workspace" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Workspace"] }],
+  // Daily job: erase workspaces deleted more than 30 days ago. Hourly job: sync sources (Granola).
+  "triggers": { "crons": ["17 3 * * *", "41 * * * *"] },
+  // Local development: two loopback hostnames stand in for the app and MCP hosts.
+  // SIGNUP: "open" lets any verified Google account in; anything else allows only ALLOWED_EMAILS.
+  "vars": {
+    "SIGNUP": "invite",
+    "APP_ORIGIN": "http://localhost:8787",
+    "MCP_RESOURCE": "http://127.0.0.1:8787/mcp",
+    "SITE_ORIGIN": "http://www.localhost:8787"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "getsecondbrain-local", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+  ],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  // Secrets, set with `wrangler secret put <NAME> --env production`:
+  //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS (comma-separated),
+  //   SOURCES_KEY (32 random bytes, base64: `openssl rand -base64 32`)
+  "env": {
+    "production": {
+      "name": "getsecondbrain-production",
+      "routes": [
+        { "pattern": "app.getsecondbrain.io", "custom_domain": true },
+        { "pattern": "mcp.getsecondbrain.io", "custom_domain": true },
+        { "pattern": "www.getsecondbrain.io", "custom_domain": true }
+      ],
+      "vars": {
+        "SIGNUP": "open",
+        "APP_ORIGIN": "https://app.getsecondbrain.io",
+        "MCP_RESOURCE": "https://mcp.getsecondbrain.io/mcp",
+        "SITE_ORIGIN": "https://www.getsecondbrain.io"
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "WORKSPACE", "class_name": "Workspace" }]
+      },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "getsecondbrain-production", "database_id": "825d5f8a-d950-4389-8456-0972dc12ef0d", "migrations_dir": "migrations" }
+      ],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "44c4540a488c4cf8a8237ca81cebcdf5" }],
+      "triggers": { "crons": ["17 3 * * *", "41 * * * *"] }
+    }
+  }
+}
