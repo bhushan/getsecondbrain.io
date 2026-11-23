@@ -170,8 +170,15 @@ export const faq = (open: boolean): [string, string][] => [
     : ["How do I get access?", `Second Brain is in private beta and access is by invitation. Write to <a href="mailto:${CONTACT}">${CONTACT}</a> to ask for a place.`],
 ];
 
-/** Text without markup, for structured data and llms.txt. */
-export const plainText = (html: string) => html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+/** Text without markup, for structured data and llms.txt. Strips tags until none are left, then any stray angle bracket. */
+export function plainText(html: string): string {
+  let text = html;
+  for (let previous = ""; previous !== text; ) {
+    previous = text;
+    text = text.replace(/<[^<>]*>/g, "");
+  }
+  return text.replace(/[<>]/g, "").replace(/\s+/g, " ").trim();
+}
 
 export const SITE_SUMMARY =
   "Second Brain keeps your notes as one linked network that every AI app you connect can search, read and add to, through one MCP address. Save something in Claude, find it in ChatGPT, Cursor or your terminal. Write skills once and every connected app can follow them.";

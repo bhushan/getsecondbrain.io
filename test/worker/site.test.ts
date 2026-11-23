@@ -2,6 +2,7 @@ import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { appLogo } from "../../src/web/appLogos";
 import { connectGuides } from "../../src/web/connectGuides";
+import { plainText } from "../../src/worker/site/pages";
 
 const SITE = "https://www.test";
 
@@ -266,6 +267,13 @@ describe("public site on the www host", () => {
     const html = await response.text();
     expect(html).toContain("<title>Page not found, Second Brain</title>");
     expect(html).toMatch(/<a class="button primary" href="\/">Go to the home page<\/a>/);
+  });
+});
+
+describe("plainText", () => {
+  it("leaves no markup behind, even from nested or broken tags", () => {
+    expect(plainText('Write to <a href="mailto:x">us</a>.')).toBe("Write to us.");
+    expect(plainText("<<a>script>alert(1)<</a>/script>")).not.toMatch(/[<>]/);
   });
 });
 
