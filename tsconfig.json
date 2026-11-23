@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "types": ["./worker-configuration.d.ts"]
   },
-  "include": ["src/worker/**/*.ts", "spike/**/*.ts", "worker-configuration.d.ts"]
+  "include": ["src/worker/**/*.ts", "worker-configuration.d.ts"]
 }

@@ -10,7 +10,6 @@
     "./**/*.ts",
     "../worker-configuration.d.ts",
     "../src/worker/**/*.ts",
-    "../spike/**/*.ts",
     "../src/web/importPaths.ts", "../src/web/connectGuides.ts", "../src/web/markdownTable.ts"
   ]
 }

@@ -73,7 +73,7 @@ describe("public site on the www host", () => {
       const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
       expect(html).not.toMatch(/<script(?![^>]*\bsrc="\/site\.js")(?![^>]*type="application\/ld\+json")/i);
       expect(html).not.toMatch(/\son[a-z]+=/i);
-      expect(html).not.toMatch(/(src|href)="https?:\/\/(?!app\.test|www\.test\/|developers\.google\.com)/);
+      expect(html).not.toMatch(/(src|href)="https?:\/\/(?!app\.test|www\.test\/|developers\.google\.com|github\.com\/bhushan\/getsecondbrain\.io")/);
       expect(html).not.toContain("data:");
     }
   });
@@ -266,6 +266,31 @@ describe("public site on the www host", () => {
     const html = await response.text();
     expect(html).toContain("<title>Page not found, Second Brain</title>");
     expect(html).toMatch(/<a class="button primary" href="\/">Go to the home page<\/a>/);
+  });
+});
+
+describe("open source", () => {
+  const REPO = "https://github.com/bhushan/getsecondbrain.io";
+
+  it("links the source code from the navigation and the footer of every page", async () => {
+    for (const path of ["/", "/privacy", "/terms"]) {
+      const html = await (await exports.default.fetch(`${SITE}${path}`)).text();
+      expect(html.match(new RegExp(`href="${REPO}"`, "g"))?.length, path).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("says it is open source in the FAQ, the structured data and llms.txt", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    expect(html).toContain("Is Second Brain open source?");
+    expect(html).toContain(`"sameAs":["${REPO}"]`);
+    const llms = await (await exports.default.fetch(`${SITE}/llms.txt`)).text();
+    expect(llms).toContain(REPO);
+  });
+
+  it("tells answer engines that apps allowed to write can update skills", async () => {
+    const llms = await (await exports.default.fetch(`${SITE}/llms.txt`)).text();
+    expect(llms).not.toContain("can never change them");
+    expect(llms).toContain("every change keeps its earlier version");
   });
 });
 

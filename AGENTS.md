@@ -1,7 +1,8 @@
 # getsecondbrain.io
 
-Hosted notes graph with a remote MCP server, on Cloudflare Workers. The approved plan, research and
-milestones are in `docs/PLAN.md`. Decisions and open items live in the vault project memory.
+Hosted notes graph with a remote MCP server, on Cloudflare Workers. Open source (AGPL-3.0); see
+`README.md` for the overview and `SECURITY.md` for reporting. Decisions and open items live in the
+maintainer's project memory, outside this repo.
 
 ## Commands
 
@@ -29,13 +30,16 @@ milestones are in `docs/PLAN.md`. Decisions and open items live in the vault pro
   is skills under `Skills/`: `use_skill` and MCP prompts return them as instructions to follow. Apps
   with write access may create and edit skills (founder's call, 2026-11-23); every write is audited
   and keeps its revisions, so the user reviews and restores them in the web app.
-- Sources (Granola today) are the only outbound fetches the Worker makes, and only to fixed hosts
-  through one guarded fetch (`granolaFetch` in `src/worker/sources/`). Never fetch a URL taken from
-  a request, a note or a tool result. Source tokens are sealed with the `SOURCES_KEY` secret and stay
+- The Worker makes outbound fetches in exactly three places: Google sign-in (fixed Google hosts),
+  sources (Granola today, only to fixed hosts through `granolaFetch` in `src/worker/sources/`), and
+  the OAuth library fetching an app's client metadata document (CIMD) during `/authorize`, only for
+  a signed-in user and only to public hosts (`global_fetch_strictly_public`). Never fetch any other
+  URL taken from a request, a note or a tool result. Source tokens are sealed with the `SOURCES_KEY` secret and stay
   inside the workspace object; the API never returns them. Synced notes are never deleted by sync,
   and a note the user edited or trashed is never rewritten.
 - D1 migrations are hand-written SQL in `migrations/`. Durable Object schema changes go through the
   version in `src/worker/workspace/`.
 - Persist plain JSON or typed arrays across boundaries, never class instances.
 - Never read or write `.env*` or `.dev.vars*`. Secrets are set with `wrangler secret put` by the founder.
-- `spike/` is throwaway code for the milestone 0 measurements and has its own Worker.
+- This repo is public. Never commit personal details, account emails, internal plans or secrets;
+  Cloudflare resource ids in `wrangler.jsonc` are not secrets.

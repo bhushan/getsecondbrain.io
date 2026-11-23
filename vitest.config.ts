@@ -27,10 +27,6 @@ export default defineConfig(async () => {
           ],
           test: { name: "worker", include: ["test/worker/**/*.test.ts"], setupFiles: ["./test/worker/setup.ts"] },
         },
-        {
-          plugins: [cloudflareTest({ wrangler: { configPath: "./spike/wrangler.jsonc" } })],
-          test: { name: "spike", include: ["test/spike/**/*.test.ts"] },
-        },
       ],
     },
   };

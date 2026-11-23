@@ -1,4 +1,4 @@
-import { APP_NAMES, CONTACT, faq, listInWords, plainText, RULES, SITE_SUMMARY } from "./pages";
+import { APP_NAMES, CONTACT, faq, listInWords, plainText, RULES, SITE_SUMMARY, SOURCE_URL } from "./pages";
 
 /** Public pages, for the sitemap. */
 export const PUBLIC_PATHS = ["/", "/privacy", "/terms"];
@@ -32,7 +32,7 @@ Any app or agent that supports MCP connectors, in the browser, on desktop and ph
 
 ## Skills
 
-Skills are instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps can use skills but can never change them.
+Skills are instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps you allow to write can add and update skills too, and every change keeps its earlier version.
 
 ## Security
 
@@ -48,4 +48,5 @@ ${faq(open).map(([question, answer]) => `### ${question}\n\n${plainText(answer)}
 - [Privacy policy](${site}/privacy)
 - [Terms of service](${site}/terms)
 - [Open Second Brain](${app}/)
+- [Source code (AGPL-3.0)](${SOURCE_URL})
 `;

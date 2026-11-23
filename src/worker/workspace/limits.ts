@@ -19,7 +19,7 @@ export const DEFAULT_LIMITS: Limits = {
   writesPerDay: 2_000,
 };
 
-/** Workspaces one person can own at a time, deleted ones waiting for erase not counted. */
+/** Workspaces one person can own, counting deleted ones until they are erased. */
 export const MAX_WORKSPACES = 10;
 
 export type LimitName = "notes" | "storage" | "writes";

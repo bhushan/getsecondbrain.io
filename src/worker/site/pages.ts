@@ -10,6 +10,9 @@ import { brainSvg } from "./brain";
 import { appLogo } from "../../web/appLogos";
 import { connectGuides } from "../../web/connectGuides";
 
+/** The public source repository. */
+export const SOURCE_URL = "https://github.com/bhushan/getsecondbrain.io";
+
 export const CONTACT = "hello@getsecondbrain.io";
 const EFFECTIVE = "22 November 2026";
 
@@ -89,6 +92,9 @@ const ICONS = {
 } as const;
 type IconName = keyof typeof ICONS;
 
+/** GitHub's mark, filled (the line icons above are stroked). */
+const githubMark = `<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>`;
+
 const icon = (name: IconName, cls = "icon") =>
   `<svg class="${cls}" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 
@@ -114,15 +120,16 @@ const navLinks = () => NAV_LINKS.map(([id, label]) => `<li><a href="/#${id}">${l
 /** Pill navigation. On phones the links move into a native disclosure menu, so it works without a script. */
 const nav = (appOrigin: string) => `<nav class="nav" aria-label="Site">${brand()}
 <ul class="nav-links">${navLinks()}</ul>
+<a class="nav-icon" href="${SOURCE_URL}" aria-label="Source code on GitHub" title="Source code on GitHub">${githubMark}</a>
 <a class="button primary small" href="${appOrigin}/">Sign in</a>
-<details class="menu"><summary aria-label="Menu">${icon("menu")}</summary><ul>${navLinks()}</ul></details></nav>`;
+<details class="menu"><summary aria-label="Menu">${icon("menu")}</summary><ul>${navLinks()}<li><a href="${SOURCE_URL}">GitHub</a></li></ul></details></nav>`;
 
 const footer = (appOrigin: string) => `<footer class="footer"><div class="wrap">
 <div class="foot-brand">${brand()}<p>One memory for every AI app you use.</p></div>
 <div class="foot-cols">
 <div><h2>Product</h2><ul>${navLinks()}</ul></div>
 <div><h2>Legal</h2><ul><li><a href="/privacy">Privacy policy</a></li><li><a href="/terms">Terms of service</a></li></ul></div>
-<div><h2>Contact</h2><ul><li><a href="mailto:${CONTACT}">${CONTACT}</a></li><li><a href="${appOrigin}/">Sign in</a></li></ul></div>
+<div><h2>Contact</h2><ul><li><a href="mailto:${CONTACT}">${CONTACT}</a></li><li><a href="${appOrigin}/">Sign in</a></li><li><a href="${SOURCE_URL}">Source code on GitHub</a></li></ul></div>
 </div>
 <p class="copyright"><span>© 2026 Second Brain. Beta.</span><span class="signature">Crafted with love <svg class="heart" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span><span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span></p>
 </div></footer>`;
@@ -156,6 +163,7 @@ export const faq = (open: boolean): [string, string][] => [
   ["Can a connected app delete my notes?", "Not for good. Apps can search and read and, if you allow it, save notes and move them to the trash. Only you can delete a note forever, and you can restore anything from the trash."],
   ["What are skills?", "Instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps you allow to write can add and update skills too, and every change keeps its earlier version."],
   ["Can I bring my Obsidian vault?", "Yes. Pick the vault folder and every note comes in with its links, tags and folders. Importing again skips notes that have not changed."],
+  ["Is Second Brain open source?", `Yes. The full source is on <a href="${SOURCE_URL}">GitHub</a> under the AGPL-3.0 license, so you can read exactly how your notes are handled, report an issue, or run your own copy.`],
   ["Who can read my notes?", "You, and the apps you connect to that workspace. Notes are encrypted at rest and in transit, but not end to end, because Second Brain has to read them to search and to answer your apps. Your notes are never used to train AI models."],
   open
     ? ["How do I start?", `Sign in with Google. You get your own empty workspace; connect an AI app or import an Obsidian vault. Each workspace has fair-use limits: up to ${DEFAULT_LIMITS.notes.toLocaleString("en-US")} notes and ${DEFAULT_LIMITS.writesPerDay.toLocaleString("en-US")} saves a day. You can delete your account at any time in Settings.`]
@@ -181,6 +189,7 @@ function landingStructuredData(origins: Origins) {
         url: home,
         logo: `${origins.site}/logo-512.png`,
         email: CONTACT,
+        sameAs: [SOURCE_URL],
       },
       { "@type": "WebSite", "@id": `${home}#website`, name: "Second Brain", url: home, publisher: { "@id": `${home}#organization` } },
       {
