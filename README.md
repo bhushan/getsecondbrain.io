@@ -1,11 +1,19 @@
 # Second Brain
 
-Linked markdown notes that every AI app can read and write. Connect Claude, ChatGPT, Cursor, Codex,
-Gemini CLI or any MCP client to one remote MCP address, save something in one app, and find it from
-another. Notes live in a workspace you can see as a network and edit in the browser.
+**One memory for every AI app you use.**
 
-Hosted at [getsecondbrain.io](https://www.getsecondbrain.io). This repository is the full source of
-the service.
+[Website](https://www.getsecondbrain.io) · [Open the app](https://app.getsecondbrain.io) ·
+[Security](SECURITY.md) · [License: AGPL-3.0](LICENSE)
+
+![The Second Brain landing page: one memory for every AI app you use](docs/screenshot.png)
+
+Linked markdown notes that every AI app can read and write. Connect Claude, ChatGPT, Cursor, Codex,
+Gemini CLI or any MCP client to one remote MCP address, `https://mcp.getsecondbrain.io/mcp`, save
+something in one app, and find it from another. Notes live in a workspace you can see as a network
+and edit in the browser.
+
+This repository is the full source of the hosted service at
+[getsecondbrain.io](https://www.getsecondbrain.io).
 
 ## What it does
 
