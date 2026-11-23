@@ -12,6 +12,7 @@ import { connectGuides } from "../../web/connectGuides";
 
 /** The public source repository. */
 export const SOURCE_URL = "https://github.com/bhushan/getsecondbrain.io";
+const LICENSE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
 
 export const CONTACT = "hello@getsecondbrain.io";
 const EFFECTIVE = "22 November 2026";
@@ -204,8 +205,10 @@ function landingStructuredData(origins: Origins) {
         name: "Second Brain",
         url: home,
         description: SITE_SUMMARY,
+        "@id": `${home}#app`,
         applicationCategory: "ProductivityApplication",
         operatingSystem: "Web",
+        license: LICENSE_URL,
         publisher: { "@id": `${home}#organization` },
         featureList: [
           "One memory shared by every AI app you connect",
@@ -214,6 +217,16 @@ function landingStructuredData(origins: Origins) {
           "Skills: instructions you write once for every connected app",
           "Separate workspaces, read-only or read and write access, only you delete for good",
         ],
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        name: "Second Brain source code",
+        codeRepository: SOURCE_URL,
+        programmingLanguage: "TypeScript",
+        runtimePlatform: "Cloudflare Workers",
+        license: LICENSE_URL,
+        targetProduct: { "@id": `${home}#app` },
+        publisher: { "@id": `${home}#organization` },
       },
       {
         "@type": "FAQPage",

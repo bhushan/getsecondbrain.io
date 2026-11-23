@@ -77,7 +77,16 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
     return handleApi(request, env, caller.user, caller.principal);
   }
 
-  return withSecurityHeaders(await env.ASSETS.fetch(request));
+  return withSecurityHeaders(cacheBuiltAsset(new URL(request.url).pathname, await env.ASSETS.fetch(request)));
+}
+
+/** Vite names every file under /assets/ by its content hash, so a found one never changes. */
+function cacheBuiltAsset(path: string, response: Response): Response {
+  const found = response.ok && !(response.headers.get("content-type") ?? "").startsWith("text/html");
+  if (!path.startsWith("/assets/") || !found) return response;
+  const cached = new Response(response.body, response);
+  cached.headers.set("cache-control", "public, max-age=31536000, immutable");
+  return cached;
 }
 
 /** Server-rendered pages (sign-in errors) get the app's headers; a page that sets its own CSP (consent) keeps it. */
