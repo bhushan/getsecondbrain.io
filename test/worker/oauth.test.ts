@@ -363,6 +363,19 @@ describe("skills as MCP prompts", () => {
     expect(prompts).toEqual([{ name: "writing-blog-post", title: "Blog post", description: "Write a blog post.", arguments: [expect.objectContaining({ name: "request", required: false })] }]);
   });
 
+  it("names itself with the Second Brain icons and website, so apps show the right logo", async () => {
+    const who = await signIn();
+    const { token } = await connect({ who });
+    const init = await rpc(token!, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } });
+    const info = init.result.serverInfo;
+    expect(info.name).toBe("Second Brain");
+    expect(info.websiteUrl).toBe("https://www.test");
+    expect(info.icons).toEqual([
+      { src: "https://www.test/logo-512.png", mimeType: "image/png", sizes: ["512x512"] },
+      { src: "https://www.test/logo.svg", mimeType: "image/svg+xml", sizes: ["any"] },
+    ]);
+  });
+
   it("returns a skill's instructions as a user message, with the user's request added", async () => {
     const who = await signIn();
     await putSkill(who, "Skills/Writing/Blog post", skill);

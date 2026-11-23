@@ -50,3 +50,14 @@ it("caches the app's content-hashed files for a year and revalidates its page", 
   const missing = await exports.default.fetch("https://app.test/assets/nope-123.js");
   expect(missing.headers.get("cache-control") ?? "").not.toContain("immutable");
 });
+
+it("serves the Second Brain icons on the MCP host, for apps that look up its favicon", async () => {
+  for (const path of ["/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png", "/logo.svg"]) {
+    const response = await exports.default.fetch(`https://mcp.test${path}`);
+    expect(response.status, path).toBe(200);
+    expect(response.headers.get("content-type"), path).toMatch(/^image\//);
+  }
+  const ico = await exports.default.fetch("https://mcp.test/favicon.ico", { redirect: "manual" });
+  expect(ico.status).toBe(301);
+  expect(ico.headers.get("location")).toBe("https://mcp.test/favicon-32.png");
+});
