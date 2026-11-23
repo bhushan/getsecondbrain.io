@@ -94,6 +94,24 @@ describe("writes per day", () => {
   });
 });
 
+describe("read audit", () => {
+  it("keeps only the latest app reads, so reading alone never fills the storage limit", async () => {
+    const ws = workspace();
+    await runInDurableObject(ws, (_, state) => {
+      state.storage.sql.exec("INSERT INTO audit (actor, action, note_id, at) VALUES ('{}', 'save', NULL, 0)");
+      state.storage.sql.exec(
+        "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 29998) INSERT INTO audit (actor, action, note_id, at) SELECT '{}', 'read:search', NULL, 0 FROM n",
+      );
+    });
+    expect(await ws.checkIn(app, "search", true)).toBe(true);
+    await runInDurableObject(ws, (_, state) => {
+      const count = (action: string) => state.storage.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM audit WHERE action LIKE ?", action).one().n;
+      expect(count("read:%")).toBeLessThanOrEqual(20_000);
+      expect(count("save")).toBe(1);
+    });
+  });
+});
+
 describe("limits through the web API", () => {
   it("answers a refused save with a reason the app can show", async () => {
     const who = await signIn();
@@ -118,7 +136,14 @@ describe("limits through the web API", () => {
     expect((await other.api("/api/workspaces", send("POST", { name: "Mine" }))).status).toBe(201);
   });
 
-  it("shows the signed-in workspace's usage, never another's", async () => {
+  it("counts deleted workspaces until they are erased, so delete and restore cannot pass the cap", async () => {
+    const who = await signIn();
+    for (let i = 1; i < MAX_WORKSPACES; i++) await createWorkspace(env.DB, who.user.id, `W${i}`);
+    await env.DB.prepare("UPDATE workspaces SET deleted_at = ? WHERE owner_id = ? AND name = 'W1'").bind(Date.now(), who.user.id).run();
+    expect((await who.api("/api/workspaces", send("POST", { name: "Replacement" }))).status).toBe(409);
+  });
+
+    it("shows the signed-in workspace's usage, never another's", async () => {
     const alice = await signIn();
     const bob = await signIn();
     await alice.api("/api/notes", send("PUT", { path: "A", body: "x" }));

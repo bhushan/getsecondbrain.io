@@ -55,6 +55,7 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
   if (path === CALLBACK_PATH && request.method === "GET") return finishLogin(request, env);
   if (path === GRANOLA_CALLBACK_PATH && request.method === "GET") return finishGranolaConnect(request, env);
   if (path === "/auth/logout" && request.method === "POST") {
+    if (request.headers.get("origin") !== hosts(env).appOrigin) return new Response("Cross-site request refused", { status: 403 });
     const token = readCookie(request, SESSION_COOKIE);
     if (token) await deleteSession(env.DB, token);
     return new Response(null, { status: 303, headers: { location: "/", "set-cookie": hostCookie(SESSION_COOKIE, "", 0) } });
@@ -75,6 +76,20 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
   return withSecurityHeaders(await env.ASSETS.fetch(request));
 }
 
+/** Server-rendered pages (sign-in errors) get the app's headers; a page that sets its own CSP (consent) keeps it. */
+async function handleAppPages(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const response = await handleApp(request, env, ctx);
+  const isPage = (response.headers.get("content-type") ?? "").startsWith("text/html");
+  return isPage && !response.headers.has("content-security-policy") ? withSecurityHeaders(response) : response;
+}
+
+/** Every host is HTTPS only. Not `preload`: that list is hard to leave. */
+function withHsts(response: Response): Response {
+  const secured = new Response(response.body, response);
+  secured.headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  return secured;
+}
+
 async function handleMcpHost(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const { appOrigin, mcpPath } = hosts(env);
@@ -93,9 +108,9 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     const { appHost, mcpHost, siteHost } = hosts(env);
     const host = new URL(request.url).host;
-    if (host === mcpHost) return handleMcpHost(request, env, ctx);
-    if (host === appHost) return handleApp(request, env, ctx);
-    if (host === siteHost) return handleSite(request, env);
+    if (host === mcpHost) return withHsts(await handleMcpHost(request, env, ctx));
+    if (host === appHost) return withHsts(await handleAppPages(request, env, ctx));
+    if (host === siteHost) return withHsts(await handleSite(request, env));
     return new Response("Not found", { status: 404 });
   },
 

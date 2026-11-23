@@ -45,7 +45,19 @@ describe("scanMarkdown links", () => {
     expect(scanMarkdown(text).links).toEqual([{ ref: "Shown", embed: false }]);
   });
 
-  it("ignores links inside inline code", () => {
+  it("scans a line of ever shorter backtick runs in linear time", () => {
+    let line = "x ";
+    for (let n = 1400; n > 0; n--) line += "`".repeat(n) + " ";
+    const started = Date.now();
+    expect(scanMarkdown(`${line}[[Shown]]`).links.map((l) => l.ref)).toEqual(["Shown"]);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
+  it("matches a code span only with a closing run of the same length", () => {
+    expect(scanMarkdown("``a ` [[Hidden]]`` [[Shown]] ` [[Also shown]]").links.map((l) => l.ref)).toEqual(["Shown", "Also shown"]);
+  });
+
+    it("ignores links inside inline code", () => {
     expect(scanMarkdown("Type `[[Not a link]]` then [[Real]]").links).toEqual([{ ref: "Real", embed: false }]);
   });
 

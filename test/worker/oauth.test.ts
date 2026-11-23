@@ -1,5 +1,5 @@
 import { env, exports } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createWorkspace } from "../../src/worker/control/accounts";
 import { APP, MCP, MCP_ORIGIN, signIn } from "./helpers";
 
@@ -153,7 +153,17 @@ describe("connecting an app", () => {
     expect(response.headers.get("location")).toBe(`/auth/login?next=${encodeURIComponent(url)}`);
   });
 
-  it("shows the app name escaped, the destination host and the user's workspaces", async () => {
+  it("fetches no client metadata document for a signed-out visitor", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { challenge } = await pkce();
+    const response = await fetchApp(authorizeUrl("https://metadata.example/client.json", challenge));
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toMatch(/^\/auth\/login\?next=/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+    it("shows the app name escaped, the destination host and the user's workspaces", async () => {
     const who = await signIn();
     await createWorkspace(env.DB, who.user.id, "Work <notes>");
     const clientId = await registerClient('<script>alert("x")</script>');

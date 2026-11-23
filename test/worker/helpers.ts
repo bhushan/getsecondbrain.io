@@ -9,7 +9,7 @@ export const MCP_ORIGIN = "https://mcp.test";
 
 /** A signed-in user with a fresh account and workspace. */
 export async function signIn(email = `user-${crypto.randomUUID()}@example.com`) {
-  const user = await upsertGoogleUser(env.DB, { sub: `sub-${crypto.randomUUID()}`, email, name: "Test User" });
+  const user = (await upsertGoogleUser(env.DB, { sub: `sub-${crypto.randomUUID()}`, email, name: "Test User" }))!;
   const session = await createSession(env.DB, user.id);
   const workspaces = await listWorkspaces(env.DB, user.id);
   const cookie = `__Host-sb_session=${session.token}`;

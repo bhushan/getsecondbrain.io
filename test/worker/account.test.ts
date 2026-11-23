@@ -65,11 +65,23 @@ describe("deleting an account", () => {
     expect((await owner.api("/api/notes?path=Shared")).status).toBe(200);
   });
 
-  it("gives a fresh, empty account to the same Google account signing in again", async () => {
+  it("never hands an account to a different Google account that now has its email", async () => {
+    const owner = await upsertGoogleUser(env.DB, { sub: "sub-owner", email: "recycled@example.com", name: "Owner" });
+    expect(await upsertGoogleUser(env.DB, { sub: "sub-newcomer", email: "Recycled@example.com", name: "Newcomer" })).toBeNull();
+    expect(await upsertGoogleUser(env.DB, { sub: "sub-owner", email: "recycled@example.com", name: "Owner" })).toMatchObject({ id: owner!.id });
+  });
+
+  it("follows a Google account's new email", async () => {
+    const before = await upsertGoogleUser(env.DB, { sub: "sub-moves", email: "old@example.com", name: "Mover" });
+    const after = await upsertGoogleUser(env.DB, { sub: "sub-moves", email: "new@example.com", name: "Mover" });
+    expect(after).toEqual({ id: before!.id, email: "new@example.com", name: "Mover" });
+  });
+
+    it("gives a fresh, empty account to the same Google account signing in again", async () => {
     const who = await signIn();
     await who.api("/api/notes", send("PUT", { path: "Old", body: "old" }));
     await who.api("/api/account", send("DELETE", { confirm: who.user.email }));
     const again = await upsertGoogleUser(env.DB, { sub: "sub-again", email: who.user.email, name: "Again" });
-    expect(again.id).not.toBe(who.user.id);
+    expect(again!.id).not.toBe(who.user.id);
   });
 });

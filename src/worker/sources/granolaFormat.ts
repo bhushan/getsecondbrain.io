@@ -90,7 +90,7 @@ export function parseMeetings(text: string): Meeting[] {
         title: attr(open, "title") ?? "",
         meetingAt: attr(open, "meeting_at") ?? "",
         updatedAt: attr(open, "updated_at") ?? "",
-        url: attr(open, "url") ?? "",
+        url: granolaUrl(attr(open, "url")),
         attendees: element(body, "known_participants")
           .split("\n")
           .map(attendeeName)
@@ -123,6 +123,11 @@ export function meetingPath(meeting: Pick<Meeting, "title" | "meetingAt">): stri
 }
 
 const yamlString = (value: string) => JSON.stringify(value);
+
+/** A link back to the meeting, only when it is one of Granola's own note pages; it is written into the note as a link. */
+function granolaUrl(value: string | null): string {
+  return value && /^https:\/\/notes\.granola\.ai\/d\/[\w-]+$/.test(value) ? value : "";
+}
 
 /**
  * The note body, in the format of the notes the Obsidian granola-sync plugin wrote, so old and new

@@ -2,3 +2,6 @@ allowBuilds:
   core-js-pure: set this to true or false
   esbuild: set this to true or false
   workerd: set this to true or false
+overrides:
+  # GHSA-mrhx-c7xc-m3w5: the MCP server SDK pins an older zod.
+  zod: ^4.6.7

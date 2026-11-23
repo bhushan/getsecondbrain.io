@@ -41,19 +41,23 @@ export function isAllowed(env: { ALLOWED_EMAILS?: string; SIGNUP?: string }, ema
   return allowed.includes(email.trim().toLowerCase());
 }
 
-/** Finds or creates the user for a Google account. A new user gets a first workspace. */
-export async function upsertGoogleUser(db: D1Database, profile: { sub: string; email: string; name: string }): Promise<User> {
-  const existing = await db
-    .prepare("SELECT id, email, name FROM users WHERE google_sub = ? OR email = ? ORDER BY google_sub IS NULL LIMIT 1")
-    .bind(profile.sub, profile.email)
-    .first<User>();
+/**
+ * Finds or creates the user for a Google account, matched by Google's stable account id (`sub`).
+ * An email already used by a different Google account returns null: email addresses get recycled,
+ * so an email match alone never hands over an account. A new user gets a first workspace.
+ */
+export async function upsertGoogleUser(db: D1Database, profile: { sub: string; email: string; name: string }): Promise<User | null> {
+  const existing = await db.prepare("SELECT id, email, name FROM users WHERE google_sub = ?").bind(profile.sub).first<User>();
   if (existing) {
+    const taken = await db.prepare("SELECT 1 FROM users WHERE email = ? AND id != ?").bind(profile.email, existing.id).first();
+    const email = taken ? existing.email : profile.email;
     await db
-      .prepare("UPDATE users SET google_sub = ?, name = ? WHERE id = ? AND (google_sub IS NOT ? OR name IS NOT ?)")
-      .bind(profile.sub, profile.name, existing.id, profile.sub, profile.name)
+      .prepare("UPDATE users SET email = ?, name = ? WHERE id = ? AND (email IS NOT ? OR name IS NOT ?)")
+      .bind(email, profile.name, existing.id, email, profile.name)
       .run();
-    return { ...existing, name: profile.name };
+    return { id: existing.id, email, name: profile.name };
   }
+  if (await db.prepare("SELECT 1 FROM users WHERE email = ?").bind(profile.email).first()) return null;
   const now = Date.now();
   const user: User = { id: ulid(now), email: profile.email, name: profile.name };
   const workspaceId = ulid(now);

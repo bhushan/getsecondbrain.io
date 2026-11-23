@@ -115,7 +115,15 @@ describe("the note written for a meeting", () => {
     expect(body).not.toContain("@example.com");
   });
 
-  it("leaves out empty private notes", () => {
+  it("keeps only Granola's own note links", () => {
+    for (const url of ["javascript:alert(1)", "https://evil.example/d/m-1", "https://notes.granola.ai.evil.example/d/m-1", "https://notes.granola.ai/d/m-1) [x](https://evil.example"]) {
+      const [meeting] = parseMeetings(getMeetingsXml([{ id: "m-1", title: "Roadmap", url }]));
+      expect(meeting!.url, url).toBe("");
+      expect(renderMeeting(meeting!)).not.toContain("Open in Granola");
+    }
+  });
+
+    it("leaves out empty private notes", () => {
     const [plain] = parseMeetings(getMeetingsXml([{ id: "m-1", title: "Roadmap" }]));
     expect(renderMeeting(plain!)).not.toContain("# My notes");
   });

@@ -15,8 +15,51 @@ export interface ScanResult {
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const WIKILINK = /(!?)\[\[([^\[\]\n]+?)\]\]/g;
-const INLINE_CODE = /(`+)[^\n]*?\1/g;
 const TAG = /(^|[\s(\[{>,;])#([\p{L}\p{N}_/-]+)/gu;
+
+/**
+ * Inline code spans on one line, as [start, end) pairs: a run of backticks up to the next run of the
+ * same length. Linear in the line's length (a backreference regex took seconds on crafted lines).
+ */
+function codeSpans(line: string): Array<[number, number]> {
+  const runs: Array<[number, number]> = [];
+  for (let i = line.indexOf("`"); i !== -1; i = line.indexOf("`", i)) {
+    let j = i;
+    while (line[j] === "`") j++;
+    runs.push([i, j - i]);
+    i = j;
+  }
+  // For each run, the index of the next run of the same length.
+  const next = new Array<number>(runs.length);
+  const lastOfLength = new Map<number, number>();
+  for (let k = runs.length - 1; k >= 0; k--) {
+    next[k] = lastOfLength.get(runs[k]![1]) ?? -1;
+    lastOfLength.set(runs[k]![1], k);
+  }
+  const spans: Array<[number, number]> = [];
+  for (let k = 0; k < runs.length; ) {
+    const close = next[k]!;
+    if (close === -1) {
+      k++;
+      continue;
+    }
+    spans.push([runs[k]![0], runs[close]![0] + runs[close]![1]]);
+    k = close + 1;
+  }
+  return spans;
+}
+
+/** The line with each inline code span replaced by `fill(span)`. */
+function replaceCode(line: string, fill: (code: string) => string): string {
+  if (!line.includes("`")) return line;
+  let out = "";
+  let last = 0;
+  for (const [start, end] of codeSpans(line)) {
+    out += line.slice(last, start) + fill(line.slice(start, end));
+    last = end;
+  }
+  return out + line.slice(last);
+}
 
 interface Body {
   frontmatter: string | null;
@@ -64,7 +107,7 @@ export function scanMarkdown(text: string): ScanResult {
 
   forEachProseLine(body, (index) => {
     const line = body.lines[index]!;
-    const prose = line.includes("`") ? line.replace(INLINE_CODE, " ") : line;
+    const prose = replaceCode(line, () => " ");
 
     if (prose.includes("[[")) {
       for (const match of prose.matchAll(WIKILINK)) {
@@ -104,7 +147,7 @@ export interface LineLink {
 /** Wikilinks on one line of prose, skipping inline code. Same rules as `scanMarkdown`. */
 export function wikilinksInLine(line: string): LineLink[] {
   if (!line.includes("[[")) return [];
-  const prose = line.includes("`") ? line.replace(INLINE_CODE, (code) => " ".repeat(code.length)) : line;
+  const prose = replaceCode(line, (code) => " ".repeat(code.length));
   const found: LineLink[] = [];
   for (const match of prose.matchAll(WIKILINK)) {
     const inner = match[2]!;
@@ -154,9 +197,9 @@ export function rewriteLinks(text: string, rename: (ref: string) => string | nul
     // Leave inline code untouched: rewrite only the text between code spans.
     let out = "";
     let last = 0;
-    for (const code of line.matchAll(INLINE_CODE)) {
-      out += rewrite(line.slice(last, code.index)) + code[0];
-      last = code.index + code[0].length;
+    for (const [start, end] of codeSpans(line)) {
+      out += rewrite(line.slice(last, start)) + line.slice(start, end);
+      last = end;
     }
     body.lines[index] = out + rewrite(line.slice(last));
   });

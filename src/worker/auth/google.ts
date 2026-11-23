@@ -14,9 +14,13 @@ const base64url = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const random = () => base64url(crypto.getRandomValues(new Uint8Array(32)));
 
-/** A path on our own site to return to after sign-in. Anything else becomes "/". */
+/**
+ * A path on our own site to return to after sign-in. Anything else becomes "/".
+ * Backslashes and control characters are refused outright: browsers turn "\\" into "/" and drop
+ * tabs and newlines from a Location value, so "/\\evil" or "/<tab>/evil" would leave the site.
+ */
 export function safeNext(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
+  if (!next || !next.startsWith("/") || next.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(next)) return "/";
   return next;
 }
 
@@ -111,6 +115,9 @@ export async function finishLogin(request: Request, env: Env): Promise<Response>
   }
 
   const user = await upsertGoogleUser(env.DB, { sub: profile.sub, email: profile.email, name: profile.name ?? profile.email });
+  if (!user) {
+    return page(409, "This email belongs to another account", "A different Google account already signed in to Second Brain with this email address. Sign in with that Google account, or write to hello@getsecondbrain.io.", OTHER_ACCOUNT);
+  }
   const session = await createSession(env.DB, user.id);
   const headers = new Headers({ location: safeNext(saved.next), "cache-control": "no-store" });
   headers.append("set-cookie", hostCookie(LOGIN_COOKIE, "", 0));

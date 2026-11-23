@@ -926,21 +926,25 @@ code { font-family: var(--font-mono); }
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  padding: 6px 6px 6px 16px;
-  border-radius: var(--radius-lg);
+  padding: 4px 4px 4px 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--input);
   background: var(--card);
 }
+/* One line: small enough to fit beside the button; scrolls only on the narrowest phones. */
 .address {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 8px 0;
-  font-size: clamp(0.85rem, 2.2vw, 1rem);
+  padding: 6px 0;
+  font-size: clamp(0.75rem, 3.1vw, 0.875rem);
   font-weight: 500;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
   -webkit-user-select: all;
   user-select: all;
 }
+.address::-webkit-scrollbar { display: none; }
 .copy { flex: none; }
 .address-note { margin: var(--space-3) 0 0; font-size: var(--text-sm); color: var(--muted-foreground); }
 .steps {

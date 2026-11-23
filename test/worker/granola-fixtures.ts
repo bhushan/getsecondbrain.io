@@ -45,10 +45,11 @@ export function meetingXml(m: {
   summary?: string;
   privateNotes?: string;
   participants?: string[];
+  url?: string;
 }): string {
   const at = m.meetingAt ?? "2026-11-20T15:54:37+05:30";
   const notes = m.privateNotes ? `<private_notes>\n${m.privateNotes}\n</private_notes>` : `<private_notes status="empty" />`;
-  return `<meeting id="${m.id}" title="${m.title}" meeting_at="${at}" created_at="${at}" updated_at="${at}" url="https://notes.granola.ai/d/${m.id}">
+  return `<meeting id="${m.id}" title="${m.title}" meeting_at="${at}" created_at="${at}" updated_at="${at}" url="${m.url ?? `https://notes.granola.ai/d/${m.id}`}">
 <known_participants>
 ${(m.participants ?? ["Ada (note creator) from Example (ada@example.com)"]).join("\n")}
 </known_participants>

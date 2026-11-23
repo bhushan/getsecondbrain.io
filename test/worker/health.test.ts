@@ -24,3 +24,17 @@ it("keeps each workspace object separate", async () => {
   expect(await a.schemaVersion()).toBe(3);
   expect(await b.schemaVersion()).toBe(3);
 });
+
+it("asks browsers to use HTTPS on every host", async () => {
+  for (const url of ["https://app.test/", "https://app.test/health", "https://app.test/auth/login", "https://mcp.test/mcp", "https://www.test/"]) {
+    const response = await exports.default.fetch(url, { redirect: "manual" });
+    expect(response.headers.get("strict-transport-security"), url).toBe("max-age=31536000; includeSubDomains");
+  }
+});
+
+it("gives sign-in error pages the app's security headers", async () => {
+  const response = await exports.default.fetch("https://app.test/auth/google/callback?code=abc&state=forged");
+  expect(response.headers.get("content-type")).toContain("text/html");
+  expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+});

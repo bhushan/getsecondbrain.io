@@ -80,8 +80,11 @@ export async function handleApi(request: Request, env: Env, user: User, principa
       case "POST /api/workspaces": {
         const body = await readJson<{ name?: unknown }>(request, 4096);
         const name = workspaceName(body.name);
-        const owned = await env.DB.prepare("SELECT COUNT(*) AS n FROM workspaces WHERE owner_id = ? AND deleted_at IS NULL").bind(user.id).first<number>("n");
-        if ((owned ?? 0) >= MAX_WORKSPACES) return fail(409, `You can have up to ${MAX_WORKSPACES} workspaces. Delete one to make room.`);
+        // Deleted workspaces still hold their notes for 30 days, so they count until erased; restore then never exceeds the cap.
+        const owned = await env.DB.prepare("SELECT COUNT(*) AS n FROM workspaces WHERE owner_id = ?").bind(user.id).first<number>("n");
+        if ((owned ?? 0) >= MAX_WORKSPACES) {
+          return fail(409, `You can have up to ${MAX_WORKSPACES} workspaces, counting deleted ones until they are erased 30 days after deletion.`);
+        }
         return json(await createWorkspace(env.DB, user.id, name), 201);
       }
 

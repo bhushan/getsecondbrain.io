@@ -89,8 +89,11 @@ describe("Google sign-in", () => {
 
   it("only returns to paths on this site", () => {
     expect(safeNext("/authorize?x=1")).toBe("/authorize?x=1");
-    for (const bad of [null, "", "https://evil.example", "//evil.example", "/\\evil.example", "javascript:alert(1)"]) {
-      expect(safeNext(bad)).toBe("/");
+    const bad = [null, "", "https://evil.example", "//evil.example", "/\\evil.example", "javascript:alert(1)"];
+    // Browsers strip tabs and newlines from a Location value, so "/\t/evil" would become "//evil".
+    bad.push("/\t/evil.example", "/\n/evil.example", "/\r\n/evil.example", "/x\\..\\evil.example");
+    for (const value of bad) {
+      expect(safeNext(value)).toBe("/");
     }
   });
 
@@ -102,7 +105,14 @@ describe("Google sign-in", () => {
       redirect: "manual",
     });
     const session = callback.headers.getSetCookie().find((c) => c.startsWith("__Host-sb_session="))!.split(";")[0]!;
-    const out = await exports.default.fetch(`${APP}/auth/logout`, { method: "POST", headers: { cookie: session }, redirect: "manual" });
+    const crossSite = await exports.default.fetch(`${APP}/auth/logout`, {
+      method: "POST",
+      headers: { cookie: session, origin: "https://evil.example" },
+      redirect: "manual",
+    });
+    expect(crossSite.status).toBe(403);
+    expect((await exports.default.fetch(`${APP}/api/me`, { headers: { cookie: session } })).status).toBe(200);
+    const out = await exports.default.fetch(`${APP}/auth/logout`, { method: "POST", headers: { cookie: session, origin: APP }, redirect: "manual" });
     expect(out.status).toBe(303);
     expect((await exports.default.fetch(`${APP}/api/me`, { headers: { cookie: session } })).status).toBe(401);
   });

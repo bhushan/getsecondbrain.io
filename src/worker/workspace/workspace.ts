@@ -46,6 +46,9 @@ const MAX_LIMIT = 200;
 const MAX_SKILLS = 500;
 const RATE_BURST = 60;
 const RATE_PER_SECOND = 1;
+/** App reads kept in the audit log; older reads are pruned every PRUNE_EVERY entries. Writes are always kept. */
+const READ_AUDIT_KEEP = 20_000;
+const PRUNE_EVERY = 1_000;
 
 const toMeta = (row: Row): NoteMeta => ({
   id: row.id as string,
@@ -387,7 +390,10 @@ export class Workspace extends DurableObject<Env> {
     if (bucket.tokens < 1) return false;
     bucket.tokens -= 1;
     if (isRead) {
-      this.sql.exec("INSERT INTO audit (actor, action, note_id, at) VALUES (?, ?, NULL, ?)", JSON.stringify(actor), `read:${tool}`, now);
+      const { seq } = this.sql
+        .exec<{ seq: number }>("INSERT INTO audit (actor, action, note_id, at) VALUES (?, ?, NULL, ?) RETURNING seq", JSON.stringify(actor), `read:${tool}`, now)
+        .one();
+      if (seq % PRUNE_EVERY === 0) this.sql.exec("DELETE FROM audit WHERE seq <= ? AND action LIKE 'read:%'", seq - READ_AUDIT_KEEP);
     }
     return true;
   }

@@ -82,12 +82,13 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
   try {
     const user = await sessionUser(request, env);
     if (request.method === "GET") {
-      const authRequest = await oauth.parseAuthRequest(request);
+      // Sign in first: parsing may fetch the app's metadata document, which strangers must not trigger.
       if (!user) {
         const url = new URL(request.url);
         const next = encodeURIComponent(url.pathname + url.search);
         return new Response(null, { status: 302, headers: { location: `/auth/login?next=${next}`, "cache-control": "no-store" } });
       }
+      const authRequest = await oauth.parseAuthRequest(request);
       const workspaces = await listWorkspaces(env.DB, user.id);
       if (!workspaces.length) return htmlError(403, "No workspace yet", "Your account has no workspace yet. Open Second Brain to set one up, then connect the app again.");
       const details = await oauth.describeConsent(authRequest);
