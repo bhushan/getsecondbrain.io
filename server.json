@@ -1,0 +1,14 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.getsecondbrain/second-brain",
+  "title": "Second Brain",
+  "description": "Linked markdown notes as memory for AI apps: search, read, save and link notes over MCP.",
+  "version": "0.1.0",
+  "websiteUrl": "https://www.getsecondbrain.io",
+  "repository": { "url": "https://github.com/bhushan/getsecondbrain.io", "source": "github" },
+  "icons": [
+    { "src": "https://www.getsecondbrain.io/logo-512.png", "mimeType": "image/png", "sizes": ["512x512"] },
+    { "src": "https://www.getsecondbrain.io/logo.svg", "mimeType": "image/svg+xml", "sizes": ["any"] }
+  ],
+  "remotes": [{ "type": "streamable-http", "url": "https://mcp.getsecondbrain.io/mcp" }]
+}
