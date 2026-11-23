@@ -2,6 +2,8 @@
 
 **One memory for every AI app you use.**
 
+[![CI](https://github.com/bhushan/getsecondbrain.io/actions/workflows/ci.yml/badge.svg)](https://github.com/bhushan/getsecondbrain.io/actions/workflows/ci.yml)
+
 [Website](https://www.getsecondbrain.io) · [Open the app](https://app.getsecondbrain.io) ·
 [Security](SECURITY.md) · [License: AGPL-3.0](LICENSE)
 
@@ -90,9 +92,8 @@ Fair-use limits per workspace (notes, storage, saves a day) are in
 
 ## Contributing
 
-Issues and pull requests are welcome. Write the test first, keep one test per scenario, and run
-`pnpm types` and `pnpm test` before opening a PR. `AGENTS.md` lists the project's rules (it is also
-what coding agents read).
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 

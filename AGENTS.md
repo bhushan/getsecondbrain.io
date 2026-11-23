@@ -15,7 +15,8 @@ maintainer's project memory, outside this repo.
 
 - Test first. One test per distinct scenario. Run types, tests and a deploy dry run before a deploy.
 - Deploys are manual only. `.github/workflows/deploy.yml` is `workflow_dispatch`; never add push,
-  pull request or schedule triggers.
+  pull request or schedule triggers to it. `ci.yml` only runs types, build and tests on pull
+  requests and `main`, with a read-only token and no secrets; keep it that way.
 - There is no preview environment (founder's call: a personal project for now). Verify locally,
   deploy, then confirm on the live site. A green run is not proof.
 - Sign-up is controlled by the `SIGNUP` var per environment: only the exact value "open" lets any
