@@ -193,6 +193,12 @@ describe("connecting an app", () => {
     expect(page.headers.get("x-frame-options")).toBe("DENY");
   });
 
+  it("lists every tool with its title in the annotations, as directories read it", async () => {
+    const { token } = await connect();
+    const tools = (await rpc(token!, "tools/list")).result.tools as { name: string; title: string; annotations: { title?: string } }[];
+    for (const tool of tools) expect(tool.annotations.title, tool.name).toBe(tool.title);
+  });
+
   it("issues a token that reads and writes only the chosen workspace", async () => {
     const { token, who } = await connect();
     const tools = (await rpc(token!, "tools/list")).result.tools.map((tool: { name: string }) => tool.name);

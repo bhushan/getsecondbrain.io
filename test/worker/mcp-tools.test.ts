@@ -32,6 +32,21 @@ describe("MCP tool list", () => {
     expect(names.filter((name) => /delete|remove|erase|purge|fetch|url/.test(name))).toEqual([]);
   });
 
+  it("describes each tool only by what it does: no other tool names and no instructions to the model", () => {
+    const names = TOOLS.map((tool) => tool.name).filter((name) => name.includes("_"));
+    for (const tool of TOOLS) {
+      const texts = [tool.description, ...Object.values(tool.input).map((field) => (field as { description?: string }).description ?? "")];
+      for (const text of texts) {
+        for (const name of names) expect(text, `${tool.name} mentions ${name}`).not.toMatch(new RegExp(`\\b${name}\\b`));
+        expect(text, tool.name).not.toMatch(/(^|[.;:] )(Use|Call|Check|Follow|Read|Prefer|Always|Never)\b/);
+      }
+    }
+  });
+
+  it("keeps the how-to-use guidance in the server instructions", () => {
+    for (const phrase of ["expected_rev", "Skills/<bundle>/<name>", "use_skill"]) expect(SERVER_INSTRUCTIONS, phrase).toContain(phrase);
+  });
+
   it("marks read tools read-only, and only the tools that replace or remove content as destructive", () => {
     for (const tool of TOOLS) {
       expect(tool.annotations.readOnlyHint, tool.name).toBe(tool.scope === "read");
@@ -59,8 +74,7 @@ describe("MCP server instructions", () => {
   });
 
   it("describe search as the first step for anything about the user", () => {
-    const search = TOOLS.find((tool) => tool.name === "search")!;
-    expect(search.description).toMatch(/first/i);
+    expect(SERVER_INSTRUCTIONS).toMatch(/search Second Brain first/);
   });
 });
 
@@ -210,8 +224,7 @@ describe("MCP skills", () => {
   });
 
   it("tells apps how to write a skill", async () => {
-    const save = TOOLS.find((tool) => tool.name === "save_note")!;
-    expect(save.description).toMatch(/Skills\/.*name.*description/);
+    expect(SERVER_INSTRUCTIONS).toMatch(/Skills\/.*name.*description/);
   });
 
   it("lists skills by bundle with their names and descriptions", async () => {
