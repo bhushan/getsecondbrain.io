@@ -61,3 +61,10 @@ it("serves the Second Brain icons on the MCP host, for apps that look up its fav
   expect(ico.status).toBe(301);
   expect(ico.headers.get("location")).toBe("https://mcp.test/favicon-32.png");
 });
+
+it("answers OpenAI's domain check on the MCP host with the token alone", async () => {
+  const response = await exports.default.fetch("https://mcp.test/.well-known/openai-apps-challenge");
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+  expect(await response.text()).toBe("openai-test-token");
+});

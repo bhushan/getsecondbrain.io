@@ -15,6 +15,7 @@ export default defineConfig(async () => {
                   APP_ORIGIN: "https://app.test",
                   MCP_RESOURCE: "https://mcp.test/mcp",
                   SITE_ORIGIN: "https://www.test",
+                  OPENAI_APPS_CHALLENGE: "openai-test-token",
                   GOOGLE_CLIENT_ID: "google-client-id",
                   GOOGLE_CLIENT_SECRET: "google-client-secret",
                   ALLOWED_EMAILS: "founder@example.com, second@example.com",
