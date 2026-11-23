@@ -36,14 +36,15 @@ interface Tool<Shape extends z.ZodRawShape = z.ZodRawShape> {
   description: string;
   scope: Scope;
   input: Shape;
-  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: false };
+  annotations: { title: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: false };
   run(context: Context, args: z.infer<z.ZodObject<Shape>>): Promise<ToolResult>;
 }
 
 const readTool = <Shape extends z.ZodRawShape>(tool: Omit<Tool<Shape>, "scope" | "annotations">): Tool<Shape> => ({
   ...tool,
   scope: "read",
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  // The title also goes in the annotations, where directories such as Claude's read it.
+  annotations: { title: tool.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 });
 
 const writeTool = <Shape extends z.ZodRawShape>(
@@ -53,7 +54,7 @@ const writeTool = <Shape extends z.ZodRawShape>(
   scope: "write",
   // Destructive in the MCP sense: replaces or removes content rather than only adding. Revisions
   // and the trash still make every change recoverable.
-  annotations: { readOnlyHint: false, destructiveHint: tool.destructive === true, idempotentHint: tool.idempotent, openWorldHint: false },
+  annotations: { title: tool.title, readOnlyHint: false, destructiveHint: tool.destructive === true, idempotentHint: tool.idempotent, openWorldHint: false },
 });
 
 const line = (note: NoteMeta) => `- ${note.path} (rev ${note.rev})`;

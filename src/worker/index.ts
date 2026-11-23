@@ -7,7 +7,7 @@ import { hosts } from "./config";
 import { deleteSession, signupOpen } from "./control/accounts";
 import { eraseDeletedWorkspaces } from "./control/workspaceDeletion";
 import { privateRobots } from "./site/discovery";
-import { handleSite } from "./site/handler";
+import { handleSite, serveIcon } from "./site/handler";
 import { GRANOLA_CALLBACK_PATH } from "./sources/granolaClient";
 import { finishGranolaConnect } from "./sources/routes";
 import { syncAllSources } from "./sources/schedule";
@@ -107,6 +107,10 @@ async function handleMcpHost(request: Request, env: Env, ctx: ExecutionContext):
   const url = new URL(request.url);
   const { appOrigin, mcpPath } = hosts(env);
   if (url.pathname === "/robots.txt") return new Response(privateRobots, { headers: { "content-type": "text/plain; charset=utf-8" } });
+  if (request.method === "GET" || request.method === "HEAD") {
+    const icon = await serveIcon(request, env);
+    if (icon) return icon;
+  }
   // Someone opening the MCP address (or the bare host) in a browser gets the how-to-connect page.
   const wantsPage =
     request.method === "GET" &&

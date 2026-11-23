@@ -8,8 +8,18 @@ import { SERVER_INSTRUCTIONS, TOOLS, runTool } from "./tools";
 
 /** Built for each request: a stateless server whose tools and prompts read the verified caller from the auth context. */
 function createServer(): McpServer {
+  const site = new URL(env.SITE_ORIGIN).origin;
   const server = new McpServer(
-    { name: "Second Brain", version: "0.1.0" },
+    {
+      name: "Second Brain",
+      version: "0.1.0",
+      websiteUrl: site,
+      // Apps show these as the connector's logo.
+      icons: [
+        { src: `${site}/logo-512.png`, mimeType: "image/png", sizes: ["512x512"] },
+        { src: `${site}/logo.svg`, mimeType: "image/svg+xml", sizes: ["any"] },
+      ],
+    },
     {
       instructions: SERVER_INSTRUCTIONS,
     },

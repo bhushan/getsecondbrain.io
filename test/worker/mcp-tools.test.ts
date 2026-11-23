@@ -38,6 +38,7 @@ describe("MCP tool list", () => {
       expect(tool.annotations.destructiveHint, tool.name).toBe(["update_note", "trash_note"].includes(tool.name));
       expect(tool.annotations.openWorldHint, tool.name).toBe(false);
       expect(tool.title, tool.name).toBeTruthy();
+      expect(tool.annotations.title, tool.name).toBe(tool.title);
     }
   });
 });

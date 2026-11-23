@@ -29,6 +29,21 @@ function html(body: string, status = 200): Response {
   });
 }
 
+/** The brand icons, also served on the MCP host so apps that look up its favicon find the logo. */
+export const ICON_FILES = new Set(["/logo.svg", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/logo-512.png"]);
+
+/** Serves one of the brand icons, or the favicon.ico redirect to the PNG. Returns null for any other path. */
+export async function serveIcon(request: Request, env: Env): Promise<Response | null> {
+  const path = new URL(request.url).pathname;
+  if (path === "/favicon.ico") return Response.redirect(new URL("/favicon-32.png", request.url).toString(), 301);
+  if (!ICON_FILES.has(path)) return null;
+  const asset = await env.ASSETS.fetch(request);
+  const response = new Response(asset.body, asset);
+  response.headers.set("cache-control", "public, max-age=86400");
+  response.headers.set("x-content-type-options", "nosniff");
+  return response;
+}
+
 /** The www host: a static marketing site with no session, API or sign-in routes. */
 export async function handleSite(request: Request, env: Env): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
