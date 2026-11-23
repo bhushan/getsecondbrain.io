@@ -36,7 +36,7 @@ interface Tool<Shape extends z.ZodRawShape = z.ZodRawShape> {
   description: string;
   scope: Scope;
   input: Shape;
-  annotations: { readOnlyHint: boolean; destructiveHint: false; idempotentHint: boolean; openWorldHint: false };
+  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: false };
   run(context: Context, args: z.infer<z.ZodObject<Shape>>): Promise<ToolResult>;
 }
 
@@ -47,11 +47,13 @@ const readTool = <Shape extends z.ZodRawShape>(tool: Omit<Tool<Shape>, "scope" |
 });
 
 const writeTool = <Shape extends z.ZodRawShape>(
-  tool: Omit<Tool<Shape>, "scope" | "annotations"> & { idempotent: boolean },
+  tool: Omit<Tool<Shape>, "scope" | "annotations"> & { idempotent: boolean; destructive?: boolean },
 ): Tool<Shape> => ({
   ...tool,
   scope: "write",
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: tool.idempotent, openWorldHint: false },
+  // Destructive in the MCP sense: replaces or removes content rather than only adding. Revisions
+  // and the trash still make every change recoverable.
+  annotations: { readOnlyHint: false, destructiveHint: tool.destructive === true, idempotentHint: tool.idempotent, openWorldHint: false },
 });
 
 const line = (note: NoteMeta) => `- ${note.path} (rev ${note.rev})`;
@@ -185,6 +187,7 @@ export const TOOLS: Tool<any>[] = [
       "Replaces the whole content of an existing note. Read it with get_note first and pass its revision as expected_rev; the update is refused if the note changed since. The previous version is kept and can be restored by the user.",
     input: { path, body: body.describe("New markdown content"), expected_rev: z.number().int().min(1) },
     idempotent: true,
+    destructive: true,
     async run({ workspace, principal }, args) {
       const result = await workspace.saveNote({
         path: parsePath(args.path).path,
@@ -237,6 +240,7 @@ export const TOOLS: Tool<any>[] = [
       "Moves a note to the trash. It leaves search, lists and links, and the user can restore it from the trash in Second Brain. Nothing is deleted for good: only the user can do that.",
     input: { path },
     idempotent: true,
+    destructive: true,
     async run({ workspace, principal }, args) {
       const note = await workspace.getNote({ path: parsePath(args.path).path });
       if (!note || !(await workspace.trashNote({ id: note.id, actor: actorOf(principal) }))) return error(`No note at "${args.path}".`);
