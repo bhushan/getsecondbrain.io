@@ -8,10 +8,13 @@ const fetchApp = (path: string, init?: RequestInit) => exports.default.fetch(`${
 
 const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
+let registrations = 0;
+
 async function registerClient(name = "Test Client") {
   const response = await fetchApp("/oauth/register", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    // A fresh address per registration, so the per-address registration limit never trips here.
+    headers: { "content-type": "application/json", "cf-connecting-ip": `192.0.2.${++registrations % 250}` },
     body: JSON.stringify({
       client_name: name,
       redirect_uris: [REDIRECT],
@@ -163,6 +166,18 @@ describe("connecting an app", () => {
     fetchSpy.mockRestore();
   });
 
+  it("says so when an app asked only to read, while keeping write on by default", async () => {
+    const who = await signIn();
+    const clientId = await registerClient("Reader");
+    const { challenge } = await pkce();
+    const readOnly = authorizeUrl(clientId, challenge).replace("scope=notes%3Aread+notes%3Awrite", "scope=notes%3Aread");
+    const asked = await (await fetchApp(readOnly, { headers: { cookie: who.cookie } })).text();
+    expect(asked).toContain("Reader asked only to read your notes.");
+    expect(asked).toMatch(/id="write"[^>]*checked/);
+    const both = await (await fetchApp(authorizeUrl(clientId, challenge), { headers: { cookie: who.cookie } })).text();
+    expect(both).not.toContain("asked only to read");
+  });
+
     it("shows the app name escaped, the destination host and the user's workspaces", async () => {
     const who = await signIn();
     await createWorkspace(env.DB, who.user.id, "Work <notes>");
@@ -207,7 +222,30 @@ describe("connecting an app", () => {
     expect(audit[0]).toMatchObject({ action: "read:search", actor: { app: "Test Client" } });
   });
 
-  it("refuses a workspace the user does not belong to, even if posted directly", async () => {
+  it("limits how often one address can register new apps", async () => {
+    const register = (ip: string) =>
+      fetchApp("/oauth/register", {
+        method: "POST",
+        headers: { "content-type": "application/json", "cf-connecting-ip": ip },
+        body: JSON.stringify({ client_name: "Flood", redirect_uris: [REDIRECT], token_endpoint_auth_method: "none" }),
+      });
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) statuses.push((await register("203.0.113.9")).status);
+    expect(statuses.slice(0, 10).every((status) => status === 201)).toBe(true);
+    expect(statuses.at(-1)).toBe(429);
+    expect((await register("198.51.100.4")).status).toBe(201);
+  });
+
+    it("marks a self-registered app as unverified, so it never borrows a real app's logo", async () => {
+    const { token, who } = await connect({ clientName: "Claude" });
+    await callTool(token!, "search", { query: "anything" });
+    const list = (await (await who.api("/api/connections")).json()) as { connections: { app: string; verified: boolean }[] };
+    expect(list.connections).toMatchObject([{ app: "Claude", verified: false }]);
+    const audit = await env.WORKSPACE.getByName(who.workspaceId).listAudit(5);
+    expect(audit[0]!.actor).toMatchObject({ app: "Claude", verified: false });
+  });
+
+    it("refuses a workspace the user does not belong to, even if posted directly", async () => {
     const stranger = await signIn();
     const { approved, token } = await connect({ workspace: stranger.workspaceId });
     expect(token).toBeNull();

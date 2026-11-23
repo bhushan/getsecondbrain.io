@@ -48,6 +48,10 @@ async function handleApp(request: Request, env: Env, ctx: ExecutionContext): Pro
   if (path === "/health") return Response.json({ ok: true });
   if (path === "/robots.txt") return new Response(privateRobots, { headers: { "content-type": "text/plain; charset=utf-8" } });
   if (path === "/authorize") return handleAuthorize(request, env);
+  if (path === "/oauth/register" && request.method === "POST") {
+    const { success } = await env.REGISTER_LIMIT.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" });
+    if (!success) return Response.json({ error: "too_many_requests", error_description: "Too many app registrations. Try again in a minute." }, { status: 429 });
+  }
   if (path.startsWith("/oauth/") || path.startsWith("/.well-known/")) {
     return servers(env).authorization.fetch(request, env, ctx);
   }

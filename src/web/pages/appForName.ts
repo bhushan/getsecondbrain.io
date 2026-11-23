@@ -21,3 +21,11 @@ export function appIdForName(name: string): string | undefined {
   const squashed = squash(name);
   return MATCHERS.find((matcher) => squashed.includes(matcher.name))?.id;
 }
+
+/**
+ * The logo to show for a connected app. Self-registered apps choose their own names, so a name
+ * alone never earns a real app's logo; only an identity verified at connect time does.
+ */
+export function logoIdFor(app: { app?: string; verified?: boolean }): string | undefined {
+  return app.verified === true && app.app ? appIdForName(app.app) : undefined;
+}

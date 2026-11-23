@@ -11,10 +11,12 @@ export interface Principal {
   scopes: Scope[];
   /** Connected app name when the call comes over MCP. */
   app?: string;
+  /** Whether that app's identity was verified when it connected. */
+  appVerified?: boolean;
 }
 
 export const actorOf = (principal: Principal): Actor =>
-  principal.app ? { kind: "app", id: principal.userId, app: principal.app } : { kind: "user", id: principal.userId };
+  principal.app ? { kind: "app", id: principal.userId, app: principal.app, verified: principal.appVerified === true } : { kind: "user", id: principal.userId };
 
 /** The signed-in user from the session cookie, or null. */
 export async function sessionUser(request: Request, env: Pick<Env, "DB">): Promise<User | null> {

@@ -20,6 +20,8 @@ export interface GrantProps {
   userId: string;
   workspaceId: string;
   app: string;
+  /** True only when the app's client metadata document was verified on its domain. */
+  verified?: boolean;
 }
 
 interface Servers {
@@ -57,7 +59,7 @@ export function servers(env: Env): Servers {
           const scopes: Scope[] = [];
           if (ctx.auth.scope.includes(READ_SCOPE)) scopes.push("read");
           if (ctx.auth.scope.includes(WRITE_SCOPE)) scopes.push("write");
-          const principal: Principal = { userId: props.userId, workspaceId: props.workspaceId, app: props.app || "Unnamed app", scopes };
+          const principal: Principal = { userId: props.userId, workspaceId: props.workspaceId, app: props.app || "Unnamed app", appVerified: props.verified === true, scopes };
           return handleMcp(request, env, ctx, principal);
         },
       },
@@ -99,6 +101,7 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
           clientDomain: details.clientDomain,
           redirectHost: details.redirectHost,
           redirectIsLoopback: details.redirectIsLoopback,
+          requestedWrite: authRequest.scope.includes(WRITE_SCOPE),
           handle: consent.handle,
           email: user.email,
           workspaces,
@@ -121,12 +124,13 @@ export async function handleAuthorize(request: Request, env: Env): Promise<Respo
       const details = await oauth.describeConsent(approved.request);
       // Never empty: an MCP caller with no app name would be treated as the user.
       const app = details.clientDomain || details.clientName || "Unnamed app";
+      const verified = Boolean(details.clientDomain);
       const { redirectTo } = await oauth.completeAuthorization({
         request: approved.request,
         userId: user.id,
-        metadata: { workspaceId: workspace.id, workspaceName: workspace.name, app },
+        metadata: { workspaceId: workspace.id, workspaceName: workspace.name, app, verified },
         scope: approved.request.scope,
-        props: { userId: user.id, workspaceId: workspace.id, app } satisfies GrantProps,
+        props: { userId: user.id, workspaceId: workspace.id, app, verified } satisfies GrantProps,
       });
       approved.headers.set("location", redirectTo);
       return new Response(null, { status: 302, headers: approved.headers });

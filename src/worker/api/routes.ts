@@ -21,10 +21,34 @@ const limited = (limit: LimitName) => json({ status: "limit", limit, error: limi
 
 class BadRequest extends Error {}
 
-async function readJson<T>(request: Request, limit: number): Promise<T> {
+/** Reads a body of at most `limit` bytes, stopping as soon as a streamed body goes over. */
+async function readText(request: Request, limit: number): Promise<string> {
   if (Number(request.headers.get("content-length") ?? 0) > limit) throw new BadRequest("too_large");
-  const text = await request.text();
-  if (text.length > limit) throw new BadRequest("too_large");
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      throw new BadRequest("too_large");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+async function readJson<T>(request: Request, limit: number): Promise<T> {
+  const text = await readText(request, limit);
   try {
     return JSON.parse(text) as T;
   } catch {
@@ -229,6 +253,7 @@ export async function handleApi(request: Request, env: Env, user: User, principa
           connections: items.map((grant) => ({
             id: grant.id,
             app: grant.metadata?.app ?? grant.clientId,
+            verified: grant.metadata?.verified === true,
             workspaceId: grant.metadata?.workspaceId ?? null,
             workspaceName: names.get(grant.metadata?.workspaceId) ?? grant.metadata?.workspaceName ?? null,
             canWrite: grant.scope.includes("notes:write"),
