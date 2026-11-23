@@ -43,10 +43,16 @@ export function isAllowed(env: { ALLOWED_EMAILS?: string; SIGNUP?: string }, ema
 
 /**
  * Finds or creates the user for a Google account, matched by Google's stable account id (`sub`).
- * An email already used by a different Google account returns null: email addresses get recycled,
- * so an email match alone never hands over an account. A new user gets a first workspace.
+ * An account with that email and no Google id yet is linked. An email already held by a different
+ * Google account returns null: addresses get recycled, so an email match alone never hands it over.
+ * A new user gets a first workspace.
  */
 export async function upsertGoogleUser(db: D1Database, profile: { sub: string; email: string; name: string }): Promise<User | null> {
+  // An account with no Google id yet is linked by email; one held by another Google account never is.
+  await db
+    .prepare("UPDATE users SET google_sub = ? WHERE email = ? AND google_sub IS NULL AND NOT EXISTS (SELECT 1 FROM users WHERE google_sub = ?)")
+    .bind(profile.sub, profile.email, profile.sub)
+    .run();
   const existing = await db.prepare("SELECT id, email, name FROM users WHERE google_sub = ?").bind(profile.sub).first<User>();
   if (existing) {
     const taken = await db.prepare("SELECT 1 FROM users WHERE email = ? AND id != ?").bind(profile.email, existing.id).first();

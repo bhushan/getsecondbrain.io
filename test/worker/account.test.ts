@@ -71,7 +71,13 @@ describe("deleting an account", () => {
     expect(await upsertGoogleUser(env.DB, { sub: "sub-owner", email: "recycled@example.com", name: "Owner" })).toMatchObject({ id: owner!.id });
   });
 
-  it("follows a Google account's new email", async () => {
+  it("links a Google account to an account with that email and no Google id yet", async () => {
+    await env.DB.prepare("INSERT INTO users (id, email, name, google_sub, created_at) VALUES ('legacy-user', 'legacy@example.com', 'Legacy', NULL, 0)").run();
+    expect(await upsertGoogleUser(env.DB, { sub: "sub-legacy", email: "legacy@example.com", name: "Legacy" })).toMatchObject({ id: "legacy-user" });
+    expect(await env.DB.prepare("SELECT google_sub FROM users WHERE id = 'legacy-user'").first("google_sub")).toBe("sub-legacy");
+  });
+
+    it("follows a Google account's new email", async () => {
     const before = await upsertGoogleUser(env.DB, { sub: "sub-moves", email: "old@example.com", name: "Mover" });
     const after = await upsertGoogleUser(env.DB, { sub: "sub-moves", email: "new@example.com", name: "Mover" });
     expect(after).toEqual({ id: before!.id, email: "new@example.com", name: "Mover" });
