@@ -1,14 +1,48 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type Me, setWorkspace } from "./api";
 import { appLogo } from "./appLogos";
 import { connectGuides } from "./connectGuides";
-import { type GraphHandle, GraphView } from "./GraphView";
+import type { GraphHandle } from "./GraphView";
 import { Icon, type IconName } from "./Icons";
-import { NotePanel, type NotePanelHandle } from "./NotePanel";
+import type { NotePanelHandle } from "./NotePanel";
 import { untitledPath } from "./noteTree";
-import { NotesPage } from "./NotesPage";
-import { ActivityPage, ConnectPage, SettingsPage, SignIn, SkillsPage, SourcesPage, TrashPage } from "./pages";
+import { SignIn } from "./pages/SignIn";
 import { Search } from "./Search";
+
+/**
+ * The network (sigma, graphology), the editor (CodeMirror) and every secondary page load on demand,
+ * so the sign-in screen and the app shell download none of them. Each loader is a plain function so
+ * the same chunk can be fetched ahead of time (`prefetch`) and by `lazy` without loading twice.
+ */
+const loaders = {
+  network: () => import("./GraphView"),
+  panel: () => import("./NotePanel"),
+  notes: () => import("./NotesPage"),
+  skills: () => import("./pages/SkillsPage"),
+  connect: () => import("./pages/ConnectPage"),
+  sources: () => import("./pages/SourcesPage"),
+  trash: () => import("./pages/TrashPage"),
+  activity: () => import("./pages/ActivityPage"),
+  settings: () => import("./pages/SettingsPage"),
+};
+const GraphView = lazy(() => loaders.network().then((m) => ({ default: m.GraphView })));
+const NotePanel = lazy(() => loaders.panel().then((m) => ({ default: m.NotePanel })));
+const NotesPage = lazy(() => loaders.notes().then((m) => ({ default: m.NotesPage })));
+const SkillsPage = lazy(() => loaders.skills().then((m) => ({ default: m.SkillsPage })));
+const ConnectPage = lazy(() => loaders.connect().then((m) => ({ default: m.ConnectPage })));
+const SourcesPage = lazy(() => loaders.sources().then((m) => ({ default: m.SourcesPage })));
+const TrashPage = lazy(() => loaders.trash().then((m) => ({ default: m.TrashPage })));
+const ActivityPage = lazy(() => loaders.activity().then((m) => ({ default: m.ActivityPage })));
+const SettingsPage = lazy(() => loaders.settings().then((m) => ({ default: m.SettingsPage })));
+
+/** Fetches chunks without rendering them; a failed fetch is retried by `lazy` when the view renders. */
+const prefetch = (...names: (keyof typeof loaders)[]) => {
+  for (const name of names) loaders[name]().catch(() => {});
+};
+const whenIdle = (task: () => void) => {
+  if ("requestIdleCallback" in window) window.requestIdleCallback(task, { timeout: 3000 });
+  else setTimeout(task, 1000);
+};
 
 type Page = "network" | "notes" | "skills" | "connect" | "sources" | "trash" | "activity" | "settings";
 /** Pages in the dock, plus Settings, which opens from the workspace menu and the account row. */
@@ -88,7 +122,12 @@ export function App() {
       try {
         saved = localStorage.getItem(WORKSPACE_KEY);
       } catch {}
-      if (saved) setWorkspace(saved);
+      if (saved) {
+        setWorkspace(saved);
+        // A remembered workspace means a returning user: fetch the network (always mounted) and the
+        // page they opened alongside `/api/me` instead of after it. The sign-in screen does not wait on it.
+        prefetch("network", pageFromPath(location.pathname));
+      }
       let loaded: Me;
       try {
         loaded = await api.me();
@@ -113,6 +152,12 @@ export function App() {
   }, []);
 
   useEffect(() => void load(), [load]);
+  const signedIn = me !== null && me !== "signed_out";
+  useEffect(() => {
+    // Once signed in, fetch the editor and the other pages in the background, so opening a note or a
+    // page later shows the real view straight away instead of an empty frame while its code loads.
+    if (signedIn) whenIdle(() => prefetch(...(Object.keys(loaders) as (keyof typeof loaders)[])));
+  }, [signedIn]);
   /** Unsaved edits are saved before another note opens; if they cannot be, the note stays open and says why. */
   const leaveNote = async () => (await panel.current?.flush()) ?? true;
   const pageRef = useRef(page);
@@ -232,15 +277,18 @@ export function App() {
   return (
     <div className="app" data-page={page} data-note={panelOpen || undefined}>
       <div className={page === "network" ? "map" : "map behind"} aria-hidden={page !== "network" || undefined}>
-        <GraphView
-          ref={graph}
-          version={version}
-          selected={selected}
-          highlighted={highlighted}
-          active={page === "network"}
-          onSelect={(id) => void (id ? open(id) : closeNote())}
-          onStats={setStats}
-        />
+        {/* Until the network's code arrives, the same empty dark field holds its place. */}
+        <Suspense fallback={<div className="graph" />}>
+          <GraphView
+            ref={graph}
+            version={version}
+            selected={selected}
+            highlighted={highlighted}
+            active={page === "network"}
+            onSelect={(id) => void (id ? open(id) : closeNote())}
+            onStats={setStats}
+          />
+        </Suspense>
         <div className="map-top">
           <Search onResults={(ids) => setHighlighted(new Set(ids))} onOpen={(id) => void open(id)} onCreate={(path) => void openPath(path)} />
         </div>
@@ -378,45 +426,51 @@ export function App() {
 
       {page !== "network" && (
         <div className={page === "notes" ? "sheet page-sheet notes-sheet" : "sheet page-sheet"}>
-          {page === "notes" && (
-            <NotesPage
-              ref={panel}
-              version={version}
-              selected={selected}
-              draftPath={draftPath}
-              onOpen={(id) => void open(id)}
-              onOpenPath={(path) => void openPath(path)}
-              onDraft={(path) => void draft(path)}
-              onClose={() => void closeNote()}
-              onChanged={refresh}
-            />
-          )}
-          {page === "skills" && <SkillsPage onChanged={refresh} />}
-          {page === "connect" && <ConnectPage me={me} onSkills={() => go("skills")} />}
-          {page === "sources" && <SourcesPage onChanged={refresh} />}
-          {page === "trash" && <TrashPage onChanged={refresh} />}
-          {page === "activity" && <ActivityPage onOpen={(id) => void open(id)} />}
-          {page === "settings" && (
-            <SettingsPage
-              me={me}
-              onRenamed={() => void load()}
-              onDeleted={() => void workspaceDeleted()}
-              onRestored={(id) => void workspaceRestored(id)}
-            />
-          )}
+          {/* The sheet stays put while a page's code loads; Notes keeps its two-pane grid. */}
+          <Suspense fallback={page === "notes" ? <div className="notes-page" /> : null}>
+            {page === "notes" && (
+              <NotesPage
+                ref={panel}
+                version={version}
+                selected={selected}
+                draftPath={draftPath}
+                onOpen={(id) => void open(id)}
+                onOpenPath={(path) => void openPath(path)}
+                onDraft={(path) => void draft(path)}
+                onClose={() => void closeNote()}
+                onChanged={refresh}
+              />
+            )}
+            {page === "skills" && <SkillsPage onChanged={refresh} />}
+            {page === "connect" && <ConnectPage me={me} onSkills={() => go("skills")} />}
+            {page === "sources" && <SourcesPage onChanged={refresh} />}
+            {page === "trash" && <TrashPage onChanged={refresh} />}
+            {page === "activity" && <ActivityPage onOpen={(id) => void open(id)} />}
+            {page === "settings" && (
+              <SettingsPage
+                me={me}
+                onRenamed={() => void load()}
+                onDeleted={() => void workspaceDeleted()}
+                onRestored={(id) => void workspaceRestored(id)}
+              />
+            )}
+          </Suspense>
         </div>
       )}
 
       {panelOpen && (
-        <NotePanel
-          ref={panel}
-          noteId={selected}
-          draftPath={draftPath}
-          onOpen={(id) => void open(id)}
-          onOpenPath={(path) => void openPath(path)}
-          onClose={() => void closeNote()}
-          onChanged={refresh}
-        />
+        // Same box as the note sheet, so the network is framed the same while the editor loads.
+        <Suspense fallback={<aside className="panel sheet" aria-busy="true" />}>
+          <NotePanel
+            ref={panel}
+            noteId={selected}
+            draftPath={draftPath}
+            onOpen={(id) => void open(id)}
+            onOpenPath={(path) => void openPath(path)}
+            onClose={() => void closeNote()}
+            onChanged={refresh}
+          />
+        </Suspense>
       )}
     </div>
   );
