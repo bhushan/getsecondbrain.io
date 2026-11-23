@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "types": [
+      "@cloudflare/vitest-plugin/types"
+    ]
+  },
+  "include": [
+    "./**/*.ts",
+    "../worker-configuration.d.ts",
+    "../src/worker/**/*.ts",
+    "../src/web/importPaths.ts", "../src/web/connectGuides.ts", "../src/web/markdownTable.ts"
+  ]
+}
