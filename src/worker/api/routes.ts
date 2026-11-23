@@ -2,7 +2,7 @@ import { deleteAccount } from "../control/accountDeletion";
 import { createWorkspace, listWorkspaces, membership, renameWorkspace, type User } from "../control/accounts";
 import { deleteWorkspace, listDeletedWorkspaces, restoreWorkspace } from "../control/workspaceDeletion";
 import { hosts } from "../config";
-import { oauthApi } from "../auth/oauth";
+import { grantVerified, oauthApi } from "../auth/oauth";
 import { actorOf, type Principal } from "../auth/principal";
 import { parsePath } from "../lib/paths";
 import { handleSourcesApi } from "../sources/routes";
@@ -253,7 +253,7 @@ export async function handleApi(request: Request, env: Env, user: User, principa
           connections: items.map((grant) => ({
             id: grant.id,
             app: grant.metadata?.app ?? grant.clientId,
-            verified: grant.metadata?.verified === true,
+            verified: grantVerified({ clientId: grant.clientId, app: grant.metadata?.app, verified: grant.metadata?.verified }),
             workspaceId: grant.metadata?.workspaceId ?? null,
             workspaceName: names.get(grant.metadata?.workspaceId) ?? grant.metadata?.workspaceName ?? null,
             canWrite: grant.scope.includes("notes:write"),

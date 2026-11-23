@@ -24,6 +24,21 @@ export interface GrantProps {
   verified?: boolean;
 }
 
+/**
+ * Whether a grant's app identity was verified. Grants made before the flag was stored count as
+ * verified only when the client id is an HTTPS metadata document on the very domain the app is
+ * named after, which is how a verified connection was named; a registered client has an opaque id.
+ */
+export function grantVerified(grant: { clientId: string; app?: string; verified?: boolean }): boolean {
+  if (typeof grant.verified === "boolean") return grant.verified;
+  if (!grant.app || !grant.clientId.startsWith("https://")) return false;
+  try {
+    return new URL(grant.clientId).hostname === grant.app;
+  } catch {
+    return false;
+  }
+}
+
 interface Servers {
   authorization: OAuthAuthorizationServer<Env>;
   resource: OAuthResourceServer<Env, GrantProps>;
@@ -59,7 +74,7 @@ export function servers(env: Env): Servers {
           const scopes: Scope[] = [];
           if (ctx.auth.scope.includes(READ_SCOPE)) scopes.push("read");
           if (ctx.auth.scope.includes(WRITE_SCOPE)) scopes.push("write");
-          const principal: Principal = { userId: props.userId, workspaceId: props.workspaceId, app: props.app || "Unnamed app", appVerified: props.verified === true, scopes };
+          const principal: Principal = { userId: props.userId, workspaceId: props.workspaceId, app: props.app || "Unnamed app", appVerified: grantVerified({ clientId: ctx.auth.clientId ?? "", app: props.app, verified: props.verified }), scopes };
           return handleMcp(request, env, ctx, principal);
         },
       },
