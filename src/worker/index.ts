@@ -107,6 +107,10 @@ async function handleMcpHost(request: Request, env: Env, ctx: ExecutionContext):
   const url = new URL(request.url);
   const { appOrigin, mcpPath } = hosts(env);
   if (url.pathname === "/robots.txt") return new Response(privateRobots, { headers: { "content-type": "text/plain; charset=utf-8" } });
+  // OpenAI's plugin directory proves we own this host by fetching a token it issued.
+  if (url.pathname === "/.well-known/openai-apps-challenge" && env.OPENAI_APPS_CHALLENGE) {
+    return new Response(env.OPENAI_APPS_CHALLENGE, { headers: { "content-type": "text/plain; charset=utf-8" } });
+  }
   if (request.method === "GET" || request.method === "HEAD") {
     const icon = await serveIcon(request, env);
     if (icon) return icon;

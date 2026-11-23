@@ -27,7 +27,9 @@
     "SIGNUP": "invite",
     "APP_ORIGIN": "http://localhost:8787",
     "MCP_RESOURCE": "http://127.0.0.1:8787/mcp",
-    "SITE_ORIGIN": "http://www.localhost:8787"
+    "SITE_ORIGIN": "http://www.localhost:8787",
+    // OpenAI plugin directory domain check token (public); empty until OpenAI issues one.
+    "OPENAI_APPS_CHALLENGE": ""
   },
   "d1_databases": [
     { "binding": "DB", "database_name": "getsecondbrain-local", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
@@ -50,7 +52,8 @@
         "SIGNUP": "open",
         "APP_ORIGIN": "https://app.getsecondbrain.io",
         "MCP_RESOURCE": "https://mcp.getsecondbrain.io/mcp",
-        "SITE_ORIGIN": "https://www.getsecondbrain.io"
+        "SITE_ORIGIN": "https://www.getsecondbrain.io",
+        "OPENAI_APPS_CHALLENGE": ""
       },
       "durable_objects": {
         "bindings": [{ "name": "WORKSPACE", "class_name": "Workspace" }]
