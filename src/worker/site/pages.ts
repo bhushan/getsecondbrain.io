@@ -164,6 +164,7 @@ export const faq = (open: boolean): [string, string][] => [
   ["Can a connected app delete my notes?", "Not for good. Apps can search and read and, if you allow it, save notes and move them to the trash. Only you can delete a note forever, and you can restore anything from the trash."],
   ["What are skills?", "Instructions you write once, such as how to write a post in your voice or how you review code. Every connected app sees your skills, follows the one that fits a task, or uses the one you name. You can write a skill, paste a SKILL.md or group skills into bundles. Apps you allow to write can add and update skills too, and every change keeps its earlier version."],
   ["Can I bring my Obsidian vault?", "Yes. Pick the vault folder and every note comes in with its links, tags and folders. Importing again skips notes that have not changed."],
+  ["How much does it cost?", "Free while Second Brain is in beta, with fair-use limits on each workspace. It is also open source, so you can run your own copy."],
   ["Is Second Brain open source?", `Yes. The full source is on <a href="${SOURCE_URL}">GitHub</a> under the AGPL-3.0 license, so you can read exactly how your notes are handled, report an issue, or run your own copy.`],
   ["Who can read my notes?", "You, and the apps you connect to that workspace. Notes are encrypted at rest and in transit, but not end to end, because Second Brain has to read them to search and to answer your apps. Your notes are never used to train AI models."],
   open
@@ -209,6 +210,7 @@ function landingStructuredData(origins: Origins) {
         applicationCategory: "ProductivityApplication",
         operatingSystem: "Web",
         license: LICENSE_URL,
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free during the beta" },
         publisher: { "@id": `${home}#organization` },
         featureList: [
           "One memory shared by every AI app you connect",
