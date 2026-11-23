@@ -277,6 +277,18 @@ describe("plainText", () => {
   });
 });
 
+describe("price", () => {
+  it("says it is free during the beta in the FAQ, the structured data and llms.txt", async () => {
+    const html = await (await exports.default.fetch(`${SITE}/`)).text();
+    expect(html).toContain("How much does it cost?");
+    expect(html).toContain("Free while Second Brain is in beta");
+    const graph = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1]!)["@graph"] as Record<string, unknown>[];
+    expect(graph.find((node) => node["@type"] === "SoftwareApplication")).toMatchObject({ offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } });
+    const llms = await (await exports.default.fetch(`${SITE}/llms.txt`)).text();
+    expect(llms).toContain("Free while Second Brain is in beta");
+  });
+});
+
 describe("open source", () => {
   const REPO = "https://github.com/bhushan/getsecondbrain.io";
 
